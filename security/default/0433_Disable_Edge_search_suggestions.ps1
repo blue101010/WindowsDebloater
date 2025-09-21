@@ -12,7 +12,7 @@ if (!(Test-Path $registryPath)) {
 
 # Check current value before changing
 $currentValue = Get-ItemProperty -Path $registryPath -Name $name -ErrorAction SilentlyContinue
-if ($currentValue -eq $null -or $currentValue.$name -ne $value) {
+if ($null -eq $currentValue -or $currentValue.$name -ne $value) {
     # Set the registry value
     Set-ItemProperty -Path $registryPath -Name $name -Value $value -Type DWord
     Write-Output "Disabled Edge search suggestions"
