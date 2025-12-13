@@ -42,11 +42,11 @@ if ($installedNmap) {
     choco upgrade nmap -y
   }
   else {
-    Write-Output "[0365_choco_upgrade_nmap] nmap is up to date with latest version"
+    Write-Output "[0365A_choco_upgrade_nmap] nmap is up to date with latest version"
   }
 }
 else {
-  Write-Output "[0365_choco_upgrade_nmap] nmap is not installed. Let's install nmap first."
+  Write-Output "[0365A_choco_upgrade_nmap] nmap is not installed. Let's install nmap first."
   choco install nmap -y
 }
 
