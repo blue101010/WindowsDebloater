@@ -48,13 +48,35 @@
     https://support.microsoft.com/en-us/windows/retrace-your-steps-with-recall-aa03f8a0-a78b-4b3e-b0a1-2eb8ac48701c
 #>
 
+function Test-IsAdministrator {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-IsAdministrator)) {
+    Write-Error 'Administrative privileges are required. Re-run this script from an elevated PowerShell session.'
+    return
+}
+
 $complianceSummary = New-Object -TypeName PSObject
-$featureRecall = (Get-WindowsOptionalFeature -Online -FeatureName 'Recall')
-if ($featureRecall.State -eq 'Enabled') {
+try {
+    $featureRecall = Get-WindowsOptionalFeature -Online -FeatureName 'Recall'
+    $featureState = $featureRecall.State
+}
+catch {
+    Write-Warning 'Unable to query the Windows Recall optional feature. Ensure this session is elevated and DISM is available.'
+    $featureState = $null
+}
+
+if ($featureState -eq 'Enabled') {
     $complianceSummary | Add-Member -MemberType NoteProperty -Name 'Windows Recall Feature' -Value 'Enabled'
 }
-else {
+elseif ($featureState -eq 'Disabled') {
     $complianceSummary | Add-Member -MemberType NoteProperty -Name 'Windows Recall Feature' -Value 'Disabled'
+}
+else {
+    $complianceSummary | Add-Member -MemberType NoteProperty -Name 'Windows Recall Feature' -Value 'Unknown (requires elevation)'
 }
 
 if ((Get-Item 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI\' -ErrorAction Ignore).Property -contains 'AllowRecallEnablement') {

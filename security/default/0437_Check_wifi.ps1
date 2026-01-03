@@ -1,9 +1,66 @@
+<#
+.SYNOPSIS
+    Audits Wi-Fi adapters, connection security, DHCP/DNS settings, and connectivity.
+
+.DESCRIPTION
+    Collects adapter metadata via Get-NetAdapter, netsh, CIM, and ipconfig, highlighting
+    security posture (auth/cipher), IP configuration, DHCP/DNS status, and stored profiles.
+    Includes a cancellable connectivity probe to avoid Test-NetConnection hanging while
+    still surfacing DNS/ICMP diagnostics.
+
+.NOTES
+    Run from an elevated PowerShell session for complete CIM/IP configuration details.
+    The script targets adapters whose name or description contains "Wi-Fi" or "Wireless".
+#>
+
+function Invoke-ConnectivityCheck {
+    param(
+        [string]$TargetHost = 'www.google.com',
+        [int]$PingTimeoutSeconds = 5,
+        [int]$PingCount = 2
+    )
+
+    Write-Host "`nTesting basic internet/DNS connectivity (target: $TargetHost):" -ForegroundColor Cyan
+
+    # DNS resolution
+    try {
+        $dnsResult = Resolve-DnsName -Name $TargetHost -Type A -ErrorAction Stop
+        $ips = $dnsResult | Where-Object { $_.IPAddress } | Select-Object -ExpandProperty IPAddress -Unique
+        if ($ips) {
+            Write-Host ("  DNS Resolution    : {0}" -f ($ips -join ', ')) -ForegroundColor Gray
+        }
+        else {
+            Write-Host "  DNS Resolution    : No IPv4 addresses returned." -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Warning "  DNS Resolution    : Failed - $($_.Exception.Message)"
+    }
+
+    # ICMP reachability
+    try {
+        $pingSuccess = Test-Connection -TargetName $TargetHost -Count $PingCount -Quiet -TimeoutSeconds $PingTimeoutSeconds -ErrorAction Stop
+        $pingMessage = $pingSuccess ? 'Success' : 'No reply'
+        $color = $pingSuccess ? 'Green' : 'Yellow'
+        Write-Host ("  ICMP Reachability : {0}" -f $pingMessage) -ForegroundColor $color
+    }
+    catch {
+        Write-Warning "  ICMP Reachability : Failed - $($_.Exception.Message)"
+    }
+}
+
 # Check Wi-Fi adapter details
 $wifi = Get-NetAdapter -Physical | Where-Object {$_.Name -like "*Wi-Fi*"}
 If (-not $wifi) { Write-Host "No Wi-Fi adapter detected." ; exit }
 
 Write-Host "Wi-Fi Adapter Detected: $($wifi.Name)"
-Write-Host "Status: $($wifi.Status)"
+if ($wifi.Status -ne 'Up') {
+    Write-Host "Status: $($wifi.Status)" -ForegroundColor Red
+    Write-Host "Wi-Fi adapter is not connected. Skipping further checks." -ForegroundColor Yellow
+    return
+}
+
+Write-Host "Status: $($wifi.Status)" -ForegroundColor Green
 
 # Check current connection and security type
 $profiles = netsh wlan show interfaces
@@ -19,9 +76,8 @@ Write-Host "Encryption Type: $encryption"
 $dns = Get-DnsClientServerAddress -InterfaceAlias $wifi.Name
 Write-Host "Configured DNS Servers: $($dns.ServerAddresses -join ', ')"
 
-# Test connectivity and DNS resolution
-Write-Host "`nTesting basic internet/DNS connectivity:"
-Test-NetConnection -ComputerName www.google.com -InformationLevel "Detailed"
+# Test connectivity and DNS resolution (only when interface is Up)
+Invoke-ConnectivityCheck -TargetHost 'www.google.com'
 
 # Summarize recommendations
 Write-Host "`nRecommended for CTF/Event Wi-Fi:"

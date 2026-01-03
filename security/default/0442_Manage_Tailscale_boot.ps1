@@ -1,3 +1,17 @@
+<#
+.SYNOPSIS
+    Interactive helper to review and control the Tailscale Windows service.
+
+.DESCRIPTION
+    Exposes functions to inspect status, change startup type (OnDemand/Enabled/Disabled),
+    and stop the service with elevation fallbacks when required. When the script runs
+    directly (not dot-sourced), it launches a simple menu to perform those actions.
+
+.NOTES
+    Run from an elevated PowerShell session to change service state or startup mode.
+    All functions accept an alternate service name if the default 'Tailscale' changes.
+#>
+
 function Set-TailscaleStartupType {
     [CmdletBinding()]
     param(
