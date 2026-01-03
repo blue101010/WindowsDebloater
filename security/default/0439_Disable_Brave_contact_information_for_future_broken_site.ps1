@@ -24,13 +24,26 @@ if (-not (Test-Path $PrefsPath)) {
     exit
 }
 
-# Create backup
+# Read the JSON preferences
+$prefs = Get-Content $PrefsPath -Raw | ConvertFrom-Json
+
+# Inspect current state before modifying
+$currentState = $false
+if ($prefs.webcompat -and $prefs.webcompat.report) {
+    $currentState = [bool]$prefs.webcompat.report.enable_save_contact_info
+}
+
+if ($currentState -eq $false -and ($prefs.webcompat.report.contact_info -eq "")) {
+    Write-Host "Current settings already disable contact info storage. No changes needed." -ForegroundColor Green
+    Write-Host "Setting: webcompat.report.enable_save_contact_info = false" -ForegroundColor Cyan
+    Write-Host "You can now restart Brave browser." -ForegroundColor Yellow
+    exit 0
+}
+
+# Create backup only when changes are required
 $BackupPath = "$PrefsPath.backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 Copy-Item $PrefsPath $BackupPath
 Write-Host "Backup created: $BackupPath" -ForegroundColor Green
-
-# Read the JSON preferences
-$prefs = Get-Content $PrefsPath -Raw | ConvertFrom-Json
 
 # Modify the webcompat settings
 if (-not $prefs.webcompat) {
