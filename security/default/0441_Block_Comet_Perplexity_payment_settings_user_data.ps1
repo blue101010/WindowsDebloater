@@ -13,7 +13,160 @@
     - Requires write access to the Comet User Data directory
 #>
 
+param(
+    [switch]$Force
+)
+
 $title = "[0441_Block_Comet_Payment]"
+
+function Test-CometReadiness {
+    param(
+        [string]$Title,
+        [switch]$Force
+    )
+
+    $issues = @()
+
+    $cometProcess = Get-Process -Name "comet" -ErrorAction SilentlyContinue
+    if ($cometProcess) {
+        $pids = ($cometProcess | Select-Object -ExpandProperty Id) -join ', '
+        $issues += "Comet is running (PID(s): $pids)."
+    }
+
+    if (-not $issues) {
+        Write-Host "$Title Environment check passed. Proceeding with configuration." -ForegroundColor Green
+        return $true
+    }
+
+    Write-Host "$Title Environment check detected issues:" -ForegroundColor Yellow
+    $issues | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+
+    if ($Force) {
+        Write-Host "$Title Force flag supplied. Continuing despite warnings." -ForegroundColor Yellow
+        return $true
+    }
+
+    Write-Host "$Title Aborting configuration. Resolve the issues above or rerun with -Force to override." -ForegroundColor Red
+    return $false
+}
+
+function Write-CheckResult {
+    param(
+        [string]$Label,
+        [bool]$State,
+        [string]$Message
+    )
+
+    if ($State) {
+        Write-Host ("  {0,-14}: OK" -f $Label) -ForegroundColor Green
+    } else {
+        Write-Host ("  {0,-14}: Needs attention" -f $Label) -ForegroundColor Yellow
+        if ($Message) {
+            Write-Host ("      -> {0}" -f $Message) -ForegroundColor DarkGray
+        }
+    }
+}
+
+function Get-NestedValue {
+    param(
+        [Parameter(Mandatory)]
+        $Object,
+        [Parameter(Mandatory)]
+        [string[]]$Path
+    )
+
+    $current = $Object
+    foreach ($segment in $Path) {
+        if (-not $current) { return $null }
+        $property = $current.PSObject.Properties.Match($segment)
+        if (-not $property) { return $null }
+        $current = $property.Value
+    }
+    return $current
+}
+
+function Test-CometConfiguration {
+    param(
+        [string]$CometUserData
+    )
+
+    $policyFile = Join-Path $CometUserData 'Policies\managed_policies.json'
+    $prefsPath = Join-Path $CometUserData 'Default\Preferences'
+    $localStatePath = Join-Path $CometUserData 'Local State'
+
+    $requiredPolicyUrls = @(
+        'comet://settings/payments*',
+        'https://perplexity.ai/payment*'
+    )
+
+    $result = [ordered]@{
+        PolicyOk = $false
+        PrefsOk = $false
+        LocalStateOk = $false
+        PolicyMessage = ''
+        PrefsMessage = ''
+        LocalStateMessage = ''
+    }
+
+    if (Test-Path $policyFile) {
+        try {
+            $policy = Get-Content $policyFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            $urlList = @($policy.BlockedUrlPatterns)
+            $missingUrls = $requiredPolicyUrls | Where-Object { $urlList -notcontains $_ }
+            $flagsOk = ($policy.PaymentMethodQueryEnabled -eq $false) -and ($policy.AutofillCreditCardEnabled -eq $false)
+            if (-not $missingUrls -and $flagsOk) {
+                $result.PolicyOk = $true
+            } else {
+                $result.PolicyMessage = if ($missingUrls) { "Missing blocked URLs: $($missingUrls -join ', ')" } else { 'Payment blocking flags not set.' }
+            }
+        }
+        catch {
+            $result.PolicyMessage = "Unable to parse managed_policies.json: $($_.Exception.Message)"
+        }
+    } else {
+        $result.PolicyMessage = 'Managed policies file not found.'
+    }
+
+    if (Test-Path $prefsPath) {
+        try {
+            $prefs = Get-Content $prefsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $creditDisabled = (Get-NestedValue -Object $prefs -Path @('autofill','credit_card_enabled')) -eq $false
+            $profileDisabled = (Get-NestedValue -Object $prefs -Path @('autofill','profile_enabled')) -eq $false
+            $perplexityBlocked = (Get-NestedValue -Object $prefs -Path @('profile','content_settings','exceptions','payment_handler','[*.]perplexity.ai,*','setting')) -eq 2
+            $settingsBlocked = (Get-NestedValue -Object $prefs -Path @('profile','content_settings','exceptions','payment_handler','comet://settings/*,*','setting')) -eq 2
+            if ($creditDisabled -and $profileDisabled -and $perplexityBlocked -and $settingsBlocked) {
+                $result.PrefsOk = $true
+            } else {
+                $result.PrefsMessage = 'Autofill or payment handler settings are not fully disabled.'
+            }
+        }
+        catch {
+            $result.PrefsMessage = "Unable to parse Preferences: $($_.Exception.Message)"
+        }
+    } else {
+        $result.PrefsMessage = 'Preferences file not found (launch Comet once).'
+    }
+
+    if (Test-Path $localStatePath) {
+        try {
+            $localState = Get-Content $localStatePath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $paymentsFlag = Get-NestedValue -Object $localState -Path @('browser','payments_integration_enabled')
+            if ($paymentsFlag -eq $false) {
+                $result.LocalStateOk = $true
+            } else {
+                $result.LocalStateMessage = 'payments_integration_enabled is not disabled.'
+            }
+        }
+        catch {
+            $result.LocalStateMessage = "Unable to parse Local State: $($_.Exception.Message)"
+        }
+    } else {
+        $result.LocalStateMessage = 'Local State file not found.'
+    }
+
+    $result.IsCompliant = $result.PolicyOk -and $result.PrefsOk -and $result.LocalStateOk
+    return [pscustomobject]$result
+}
 
 # Define Comet paths
 $cometUserData = "$env:LOCALAPPDATA\Perplexity\Comet\User Data"
@@ -30,12 +183,22 @@ if (-not (Test-Path $cometUserData)) {
 
 Write-Host "$title Found Comet User Data at: $cometUserData" -ForegroundColor Green
 
-# Check if Comet is running
-$cometProcess = Get-Process -Name "comet" -ErrorAction SilentlyContinue
-if ($cometProcess) {
-    Write-Host "$title WARNING: Comet is currently running. Please close it before continuing." -ForegroundColor Red
-    Write-Host "$title Press any key to continue anyway, or Ctrl+C to cancel..." -ForegroundColor Yellow
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+$configStatus = Test-CometConfiguration -CometUserData $cometUserData
+
+Write-Host "`n$title Configuration status:" -ForegroundColor Cyan
+Write-CheckResult -Label 'Policies' -State $configStatus.PolicyOk -Message $configStatus.PolicyMessage
+Write-CheckResult -Label 'Preferences' -State $configStatus.PrefsOk -Message $configStatus.PrefsMessage
+Write-CheckResult -Label 'Local State' -State $configStatus.LocalStateOk -Message $configStatus.LocalStateMessage
+
+if ($configStatus.IsCompliant) {
+    Write-Host "`n$title All payment-blocking controls are already enforced. No changes required." -ForegroundColor Green
+    exit 0
+}
+
+Write-Host "`n$title Configuration drift detected. Remediation will be applied." -ForegroundColor Yellow
+
+if (-not (Test-CometReadiness -Title $title -Force:$Force)) {
+    exit 1
 }
 
 try {
