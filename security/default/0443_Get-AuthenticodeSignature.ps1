@@ -1,19 +1,30 @@
 #
 # .SYNOPSIS
-#   Interactive or batch Authenticode review for executables under SystemApps and WinSxS.
+#   Validates digital signatures (Authenticode) of executables in Windows system directories
+#   to detect unsigned, tampered, or potentially malicious binaries.
 #
 # .DESCRIPTION
-#   Provides both an interactive menu and batch switches:
-#     --batch show-exec-invalid   (option A)
-#     --batch show-exec-details   (option B)
-#     --batch show-searchhost     (option C)
-#     --batch show-exec-valid     (option D)
-#     --prompt                    (show menu after batch run)
-#   Each option triggers only the necessary enumeration and caches results for reuse.
-#   Baseline outputs:
-#     * Option A writes non-valid executables to baselines/0443-AuthenticodeSignature-invalid-baseline-yyyy-MM-dd-HH-mm.json
-#     * Option D writes valid executables to baselines/0443-AuthenticodeSignature-valid-baseline-yyyy-MM-dd-HH-mm.json
-#     * Override paths with -InvalidBaselinePath / -BaselinePath or skip both via -NoBaseline.
+#   This security script scans executables (.exe files) in critical Windows directories
+#   (SystemApps and WinSxS) and verifies their Authenticode digital signatures using
+#   the Get-AuthenticodeSignature cmdlet.
+#
+#   Key capabilities:
+#     - Identifies unsigned or improperly signed executables that may indicate tampering
+#     - Displays signer certificate details (Subject, Thumbprint) for verification
+#     - Generates JSON baselines of valid/invalid executables for change detection
+#     - Supports both interactive menu and batch/automation modes
+#
+#   Scan modes (batch switches):
+#     --batch show-exec-invalid   List executables with non-Valid signature status (option A)
+#     --batch show-exec-details   List all executables with full certificate details (option B)
+#     --batch show-searchhost     Focus on SearchHost.exe instances only (option C)
+#     --batch show-exec-valid     List Valid executables and save baseline (option D)
+#     --prompt                    Show interactive menu after batch run
+#
+#   Baseline outputs (for drift detection and auditing):
+#     * Option A: baselines/0443-AuthenticodeSignature-invalid-baseline-yyyy-MM-dd-HH-mm.json
+#     * Option D: baselines/0443-AuthenticodeSignature-valid-baseline-yyyy-MM-dd-HH-mm.json
+#     * Override paths with -InvalidBaselinePath / -BaselinePath or skip via -NoBaseline
 #
 # .NOTES
 #   Requires administrative permissions to access certain WinSxS subdirectories.
