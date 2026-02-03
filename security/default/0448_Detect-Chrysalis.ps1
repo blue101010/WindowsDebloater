@@ -19,8 +19,8 @@
 param(
     [string[]] $SearchRoots = @("C:\ProgramData", "$env:APPDATA", "$env:LOCALAPPDATA"),
     [switch]   $DeepDiskScan,          # If set, adds C:\Users and C:\ to scan roots (heavy)
-    [switch]   $CheckDnsCache,
-    [switch]   $CheckFirewallLogs,
+    [bool]     $CheckDnsCache = $true,
+    [bool]     $CheckFirewallLogs = $true,
     [string]   $FirewallLogPath = "C:\Windows\System32\LogFiles\Firewall\pfirewall.log"
 )
 
