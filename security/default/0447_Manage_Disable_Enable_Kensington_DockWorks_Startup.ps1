@@ -42,7 +42,7 @@ function Restore-RunValueFromBackup {
         [string]$RunPath
     )
 
-    $restored = $false
+    $restoredAny = $false
     $backupKey = ($RunPath -replace '\\Run$', '\\RunBackup')
     if (-not (Test-Path $backupKey)) {
         Write-Verbose "No backup key found at $backupKey"
@@ -56,21 +56,22 @@ function Restore-RunValueFromBackup {
         return $false
     }
 
-    $props.PSObject.Properties |
+    $matches = $props.PSObject.Properties |
         Where-Object { $_.Name -notlike 'PS*' } |
-        Where-Object { $_.Name -match 'DockWorks' -or ($_.Value -is [string] -and $_.Value -match 'DockWorks') } |
-        ForEach-Object {
-            try {
-                New-ItemProperty -Path $RunPath -Name $_.Name -Value $_.Value -PropertyType String -Force -ErrorAction Stop | Out-Null
-                Remove-ItemProperty -Path $backupKey -Name $_.Name -Force -ErrorAction Stop
-                Write-Log "Restored $($_.Name) to $RunPath"
-                $restored = $true
-            } catch {
-                Write-Log "ERROR: Failed to restore $($_.Name) from $backupKey : $_"
-            }
-        }
+        Where-Object { $_.Name -match 'DockWorks' -or ($_.Value -is [string] -and $_.Value -match 'DockWorks') }
 
-    return $restored
+    foreach ($m in $matches) {
+        try {
+            New-ItemProperty -Path $RunPath -Name $m.Name -Value $m.Value -PropertyType String -Force -ErrorAction Stop | Out-Null
+            Remove-ItemProperty -Path $backupKey -Name $m.Name -Force -ErrorAction Stop
+            Write-Log "Restored $($m.Name) to $RunPath"
+            $restoredAny = $true
+        } catch {
+            Write-Log "ERROR: Failed to restore $($m.Name) from $backupKey : $_"
+        }
+    }
+
+    return $restoredAny
 }
 
 function Backup-And-Remove-RunValue {
@@ -295,8 +296,7 @@ if ($Action -eq 'disable') {
 if ($Action -eq 'enable') {
     $anyRestored = $false
     foreach ($rp in $runPaths) {
-        $restored = Restore-RunValueFromBackup -RunPath $rp
-        if ($restored) { $anyRestored = $true }
+        if (Restore-RunValueFromBackup -RunPath $rp) { $anyRestored = $true }
     }
     # service handling for enable
     if (Test-Path $serviceBackupReg) {

@@ -49,6 +49,9 @@ param(
 
 $script:AllExeResults = $null
 $script:SearchHostResults = $null
+$script:System32ExeResults = $null
+$script:WinSxSExeResults = $null
+$script:OptionAAllPathsResults = $null
 $script:ShouldPause = $true
 $script:TrustProviderWarning = 'The form specified for the subject is not one supported or known by the specified trust provider.'
 
@@ -94,14 +97,15 @@ function Show-AuthenticodeUsage {
 
 function Collect-Executables {
     param(
-        [string]$Filter = '*.exe'
+        [string]$Filter = '*.exe',
+        [string[]]$ScanPaths = $paths
     )
 
     Write-Host "Scanning directories using filter '$Filter':" -ForegroundColor Cyan
-    $paths | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
+    $ScanPaths | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
     Write-Host
 
-    $files = foreach ($p in $paths) {
+    $files = foreach ($p in $ScanPaths) {
         if (Test-Path $p) {
             Get-ChildItem -Path $p -Recurse -Filter $Filter -File -ErrorAction SilentlyContinue
         }
@@ -177,6 +181,34 @@ function Ensure-AllExeResults {
     return $true
 }
 
+function Ensure-WinSxSExeResults {
+    if (-not $script:WinSxSExeResults) {
+        $files = Collect-Executables -Filter '*.exe' -ScanPaths @('C:\Windows\WinSxS')
+        if (-not $files) { return $false }
+        $script:WinSxSExeResults = Collect-Signatures -Files $files -ActivityLabel 'Scanning executables (WinSxS only)'
+    }
+    return $true
+}
+
+function Ensure-System32ExeResults {
+    if (-not $script:System32ExeResults) {
+        $files = Collect-Executables -Filter '*.exe' -ScanPaths @('C:\Windows\System32')
+        if (-not $files) { return $false }
+        $script:System32ExeResults = Collect-Signatures -Files $files -ActivityLabel 'Scanning executables (System32 only)'
+    }
+    return $true
+}
+
+function Ensure-OptionAAllPathsResults {
+    if (-not $script:OptionAAllPathsResults) {
+        $scanPaths = @('C:\Windows\System32', 'C:\Windows\WinSxS') + $paths | Select-Object -Unique
+        $files = Collect-Executables -Filter '*.exe' -ScanPaths $scanPaths
+        if (-not $files) { return $false }
+        $script:OptionAAllPathsResults = Collect-Signatures -Files $files -ActivityLabel 'Scanning executables (Option A all paths)'
+    }
+    return $true
+}
+
 function Ensure-SearchHostResults {
     if (-not $script:SearchHostResults) {
         $files = Collect-Executables -Filter '*SearchHost.exe'
@@ -184,6 +216,38 @@ function Ensure-SearchHostResults {
         $script:SearchHostResults = Collect-Signatures -Files $files -ActivityLabel 'Scanning SearchHost.exe (Option C)'
     }
     return $true
+}
+
+function Read-OptionAScope {
+    do {
+        Write-Host "Option A Scope:" -ForegroundColor Cyan
+        Write-Host "  1) C:\Windows\System32\ only"
+        Write-Host "  2) C:\Windows\WinSxS\ only"
+        Write-Host "  3) All paths"
+        Write-Host "  4) Cancel"
+        $scopeChoice = Read-Host "Select scope for option A"
+        switch ($scopeChoice) {
+            '1' { return 'system32' }
+            '2' { return 'winsxs' }
+            '3' { return 'all' }
+            '4' { return 'cancel' }
+            default { Write-Warning "Invalid selection. Choose 1, 2, 3, or 4." }
+        }
+    } while ($true)
+}
+
+function Read-OptionADisplayMode {
+    do {
+        Write-Host "Option A Output Mode:" -ForegroundColor Cyan
+        Write-Host "  A) List all"
+        Write-Host "  B) Synthesis and count only"
+        $displayChoice = Read-Host "Select output mode"
+        switch ($displayChoice.ToUpperInvariant()) {
+            'A' { return 'list' }
+            'B' { return 'summary' }
+            default { Write-Warning "Invalid selection. Choose A or B." }
+        }
+    } while ($true)
 }
 
 function Save-Baseline {
@@ -253,24 +317,58 @@ function Show-StatusSummary {
 }
 
 function Show-OptionA {
-    if (-not (Ensure-AllExeResults)) { return }
+    $scope = Read-OptionAScope
+    if ($scope -eq 'cancel') {
+        Write-Host "Option A canceled by user." -ForegroundColor Yellow
+        Pause-ForMenu
+        return
+    }
+
+    $results = $null
+    $scopeLabel = $null
+    if ($scope -eq 'system32') {
+        if (-not (Ensure-System32ExeResults)) { return }
+        $results = $script:System32ExeResults
+        $scopeLabel = 'C:\Windows\System32\ only'
+    } elseif ($scope -eq 'winsxs') {
+        if (-not (Ensure-WinSxSExeResults)) { return }
+        $results = $script:WinSxSExeResults
+        $scopeLabel = 'C:\Windows\WinSxS\ only'
+    } else {
+        if (-not (Ensure-OptionAAllPathsResults)) { return }
+        $results = $script:OptionAAllPathsResults
+        $scopeLabel = 'All paths'
+    }
 
     Write-Host "Option A lists executables whose Authenticode status is anything other than 'Valid'." -ForegroundColor Yellow
     Write-Host "Only the status and path are shown so you can focus on potential issues." -ForegroundColor Yellow
     Write-Host "A JSON baseline of these paths is saved unless -NoBaseline is specified." -ForegroundColor Yellow
+    Write-Host "Scope: $scopeLabel" -ForegroundColor Yellow
     Write-Host
 
-    $nonValid = $script:AllExeResults | Where-Object { $_.Status -ne 'Valid' }
+    $displayMode = Read-OptionADisplayMode
+    $nonValid = $results | Where-Object { $_.Status -ne 'Valid' }
 
     if (-not $nonValid) {
         Write-Host "All scanned executables are reported as Valid." -ForegroundColor Green
+        if ($displayMode -eq 'list') {
+            $results |
+                Select-Object @{Name='Status'; Expression={$_.Status}},
+                              @{Name='Path';   Expression={$_.Path}} |
+                Format-Table -AutoSize -Wrap
+        } else {
+            Write-Host "Total scanned: $($results.Count) executable(s)." -ForegroundColor Cyan
+            Show-StatusSummary -Items $results -Context 'All scanned executables'
+        }
     } else {
-        $nonValid |
-            Select-Object @{Name='Status'; Expression={$_.Status}},
-                          @{Name='Path';   Expression={$_.Path}} |
-            Format-Table -AutoSize -Wrap
-
-        Write-Host "\nTotal: $($nonValid.Count) executable(s) need attention." -ForegroundColor Cyan
+        if ($displayMode -eq 'list') {
+            $nonValid |
+                Select-Object @{Name='Status'; Expression={$_.Status}},
+                              @{Name='Path';   Expression={$_.Path}} |
+                Format-Table -AutoSize -Wrap
+        }
+        Write-Host ""
+        Write-Host "Total: $($nonValid.Count) executable(s) need attention." -ForegroundColor Cyan
         Show-StatusSummary -Items $nonValid -Context 'Non-Valid executables'
         Save-Baseline -Items $nonValid -Path $InvalidBaselinePath -ContextLabel 'Invalid executables'
     }

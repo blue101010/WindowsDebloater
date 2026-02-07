@@ -231,7 +231,6 @@ function Test-ChrysalisMutex {
     # We enumerate processes and .NET mutexes in-process.
     # This is heuristic – on a live infected system the mutex may already exist.[page:0]
     try {
-        $currentDomain = [AppDomain]::CurrentDomain
         # Try to open the mutex (will throw if it does not exist)
         $createdNew = $false
         $m = New-Object System.Threading.Mutex($true, $MutexName, [ref]$createdNew)

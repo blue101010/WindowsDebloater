@@ -108,6 +108,33 @@ function Test-PathSafe {
     }
 }
 
+function Get-PathMetadata {
+    param([string]$Path)
+    try {
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        $sizeBytes = if ($item.PSIsContainer) { $null } else { [int64]$item.Length }
+        return [PSCustomObject]@{
+            ItemType      = if ($item.PSIsContainer) { "Directory" } else { "File" }
+            SizeBytes     = $sizeBytes
+            CreationTime  = $item.CreationTime
+            LastWriteTime = $item.LastWriteTime
+        }
+    } catch {
+        return $null
+    }
+}
+
+function Get-FileSha256Safe {
+    param([string]$Path)
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            return (Get-FileHash -Path $Path -Algorithm SHA256 -ErrorAction Stop).Hash
+        }
+    } catch {
+        return $null
+    }
+}
+
 function Find-RMMTools {
     <#
     .SYNOPSIS
@@ -140,10 +167,17 @@ function Find-RMMTools {
                 if ($expandedPath) {
                     Write-Host "    [$currentIndex/$totalTools] Checking Path: $expandedPath" -ForegroundColor Gray
                     if (Test-PathSafe $expandedPath) {
+                        $meta = Get-PathMetadata -Path $expandedPath
+                        $sha256 = Get-FileSha256Safe -Path $expandedPath
                         $detectedArtifacts += [PSCustomObject]@{
                             Type = "InstallationPath"
                             Value = $expandedPath
                             Original = $pathTemplate
+                            SHA256 = $sha256
+                            ItemType = if ($meta) { $meta.ItemType } else { $null }
+                            SizeBytes = if ($meta) { $meta.SizeBytes } else { $null }
+                            CreationTime = if ($meta) { $meta.CreationTime } else { $null }
+                            LastWriteTime = if ($meta) { $meta.LastWriteTime } else { $null }
                         }
                     }
                 }
@@ -160,15 +194,10 @@ function Find-RMMTools {
                     if ($expandedFile) {
                         Write-Host "    [$currentIndex/$totalTools] Checking File: $expandedFile" -ForegroundColor Gray
                         if (Test-PathSafe $expandedFile) {
+                            $meta = Get-PathMetadata -Path $expandedFile
                             # Calculate hash for found files to match "full path and hash" requirement
-                            $sha256 = $null
-                            if (-not (Test-Path -Path $expandedFile -PathType Container)) {
-                                try {
-                                    $hashObj = Get-FileHash -Path $expandedFile -Algorithm SHA256 -ErrorAction SilentlyContinue
-                                    $sha256 = $hashObj.Hash
-                                    Write-Host "        SHA256: $sha256" -ForegroundColor DarkGray
-                                } catch {}
-                            }
+                            $sha256 = Get-FileSha256Safe -Path $expandedFile
+                            if ($sha256) { Write-Host "        SHA256: $sha256" -ForegroundColor DarkGray }
 
                             $detectedArtifacts += [PSCustomObject]@{
                                 Type = "FileArtifact"
@@ -176,6 +205,10 @@ function Find-RMMTools {
                                 Original = $artifact.File
                                 Description = $artifact.Description
                                 SHA256 = $sha256
+                                ItemType = if ($meta) { $meta.ItemType } else { $null }
+                                SizeBytes = if ($meta) { $meta.SizeBytes } else { $null }
+                                CreationTime = if ($meta) { $meta.CreationTime } else { $null }
+                                LastWriteTime = if ($meta) { $meta.LastWriteTime } else { $null }
                             }
                         }
                     }
@@ -272,6 +305,18 @@ function Show-Results {
         Write-Host " Detected Artifacts:" -ForegroundColor Cyan
         foreach ($art in $finding.Artifacts) {
             Write-Host "  [$($art.Type)] $($art.Value)" -ForegroundColor White
+            if ($art.PSObject.Properties.Match('CreationTime').Count -gt 0 -and $art.CreationTime) {
+                Write-Host "    Created: $($art.CreationTime)" -ForegroundColor Gray
+            }
+            if ($art.PSObject.Properties.Match('LastWriteTime').Count -gt 0 -and $art.LastWriteTime) {
+                Write-Host "    Modified: $($art.LastWriteTime)" -ForegroundColor Gray
+            }
+            if ($art.PSObject.Properties.Match('SizeBytes').Count -gt 0 -and $null -ne $art.SizeBytes) {
+                Write-Host "    Size: $($art.SizeBytes) bytes" -ForegroundColor Gray
+            }
+            if ($art.PSObject.Properties.Match('SHA256').Count -gt 0 -and $art.SHA256) {
+                Write-Host "    SHA-256: $($art.SHA256)" -ForegroundColor Gray
+            }
             if ($art.Description -and $art.Description -ne "N/A") {
                 Write-Host "    Detail: $($art.Description)" -ForegroundColor Gray
             }
@@ -297,6 +342,11 @@ function Export-Results {
                     ArtifactType = $a.Type
                     ArtifactValue = $a.Value
                     Description   = $a.Description
+                    SHA256        = $a.SHA256
+                    ItemType      = $a.ItemType
+                    SizeBytes     = $a.SizeBytes
+                    CreationTime  = $a.CreationTime
+                    LastWriteTime = $a.LastWriteTime
                 }
             }
         }
