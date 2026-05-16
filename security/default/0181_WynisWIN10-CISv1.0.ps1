@@ -2108,25 +2108,6 @@ $chaine += $traitement
 $chaine>> $nomfichier
 
 
-#Network security: LAN Manager authentication level
-$indextest += 1
-$chaine = $null
-$traitement = $null
-$exist = $null
-$id = "NS" + "$indextest"
-$chaine = "$id" + ";" + "(L1)Ensure Network security: LAN Manager authentication level is set to Send NTLMv2 response only. Refuse LM & NTLM,value must be 5" + ";"
-$exist = Test-Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
-if ( $exist -eq $true) {
- $traitement = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"|Select-Object LmCompatibilityLevel
- $traitement = $traitement.LmCompatibilityLevel
-}
-else {
- $traitement = "not configure"
-}
-
-$chaine += $traitement
-$chaine>> $nomfichier
-
 
 #Network security: LDAP client signing requirements'
 $indextest += 1

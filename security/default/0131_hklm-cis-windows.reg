@@ -346,16 +346,6 @@ Windows Registry Editor Version 5.00
 ; 0000001 = On
 "EnableForcedLogOff"=dword:0000000
 
-;;; 2.3.11.7 (L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM&NTLM'
-[HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa]
-; <deleted> = (Default)
-; 0000000 = Clients use LM and NTLM authentication, but they never use NTLMv2 session security. Domain controllers accept LM, NTLM, and NTLMv2 authentication
-; 0000001 = Clients use LM and NTLM authentication, and they use NTLMv2 session security if the server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication
-; 0000002 = Clients use only NTLM authentication, and they use NTLMv2 session security if the server supports it. Domain controller accepts LM, NTLM, and NTLMv2 authentication
-; 0000003 = Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication
-; 0000004 = Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controller refuses LM authentication responses, but it accepts NTLM and NTLMv2
-; 0000005 = Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controller refuses LM and NTLM authentication responses, but it accepts NTLMv2 (CIS)
-"LmCompatibilityLevel"=dword:0000005
 
 ;;; 2.3.11.8 (L1) Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher
 [HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP]
