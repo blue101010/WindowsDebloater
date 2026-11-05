@@ -7,6 +7,8 @@ This script disables the keylogger InputPersonalization by modifying registry va
 .DESCRIPTION
 The script contains a function called Test-And-Set-RegistryItem, which tests and sets the value of a registry item.
 It then calls the Test-And-Set-RegistryItem function multiple times to disable various keylogger settings.
+Missing registry keys and values are created as needed. Values are written as DWORDs.
+Registry access errors stop execution; run as Administrator to update HKLM policies.
 
 .PARAMETER Path
 The registry path where the item is located.
@@ -36,22 +38,26 @@ function Test-And-Set-RegistryItem {
     [Parameter(Mandatory = $true)]
     [string]$Name,
     [Parameter(Mandatory = $true)]
-    [string]$Value
+    [int]$Value
   )
 
-  if (Test-Path -Path $Path) {
-    $CurrentValue = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $Name
+  if (-not (Test-Path -Path $Path -ErrorAction Stop)) {
+    Write-Host "[0021_Disable_keylogger_InputPersonalization] Item does not exist: $Path. Creating it..."
+    New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
+  }
 
-    if ($CurrentValue -ne $Value) {
-      Set-ItemProperty -Path $Path -Name $Name -Value $Value
-      Write-Host "[0021_Disable_keylogger_InputPersonalization] Value changed for $Path\$Name to $Value"
-    }
-    else {
-      Write-Host "[0021_Disable_keylogger_InputPersonalization] No change for $Path\$Name with value $Value"
-    }
+  $properties = Get-ItemProperty -Path $Path -ErrorAction Stop
+  $property = $properties.PSObject.Properties[$Name]
+  if ($null -eq $property) {
+    Write-Host "[0021_Disable_keylogger_InputPersonalization] Value does not exist: $Path\$Name. Creating it..."
+  }
+
+  if ($null -eq $property -or $property.Value -ne $Value) {
+    Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type DWORD -Force -ErrorAction Stop
+    Write-Host "[0021_Disable_keylogger_InputPersonalization] Value changed for $Path\$Name to $Value"
   }
   else {
-    Write-Host "[0021_Disable_keylogger_InputPersonalization] Item does not exist: $Path"
+    Write-Host "[0021_Disable_keylogger_InputPersonalization] No change for $Path\$Name with value $Value"
   }
 }
 

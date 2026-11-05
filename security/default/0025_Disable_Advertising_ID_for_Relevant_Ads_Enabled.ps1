@@ -5,29 +5,33 @@
 # "Enabled"=dword:00000000
 # Enabled = 1 - the feature is enabled : you share the Ad ID...
 # Enabled = 0 - the feature is disabled.
+# Reads back Enabled to confirm the configured value. Run as Administrator for HKLM.
 
 $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo"
 $propertyName = "Enabled"
 $targetValue = 0
 $modified = $false
 
-if (Test-Path $registryPath) {
-  $propertyValue = Get-ItemProperty -Path $registryPath -Name $propertyName -ErrorAction SilentlyContinue
-  if ($null -eq $propertyValue) {
-    Set-ItemProperty -Path $registryPath -Name $propertyName -Value $targetValue -Type DWORD -Force
-    $modified = $true
-  }
-  else {
-    if ($propertyValue.$propertyName -ne $targetValue) {
-      Set-ItemProperty -Path $registryPath -Name $propertyName -Value $targetValue -Type DWORD -Force
-      $modified = $true
-    }
-  }
-}
-else {
-  Write-Host "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] Registry path not found: $registryPath"
+if (-not (Test-Path $registryPath -ErrorAction Stop)) {
+  Write-Warning "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] Registry path not found: $registryPath. Status not confirmed."
+  return
 }
 
-if (-not $modified) {
-  Write-Host "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled [no change] $registryPath $propertyName = $targetValue"
+$properties = Get-ItemProperty -Path $registryPath -ErrorAction Stop
+$property = $properties.PSObject.Properties[$propertyName]
+if ($null -eq $property -or $property.Value -ne $targetValue) {
+  Set-ItemProperty -Path $registryPath -Name $propertyName -Value $targetValue -Type DWORD -Force -ErrorAction Stop
+  $modified = $true
+}
+
+$confirmedValue = Get-ItemPropertyValue -Path $registryPath -Name $propertyName -ErrorAction Stop
+if ($confirmedValue -ne $targetValue) {
+  throw "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] Verification failed: $registryPath $propertyName = $confirmedValue; expected $targetValue."
+}
+
+if ($modified) {
+  Write-Host "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] [confirmed] [changed] $registryPath $propertyName = $confirmedValue (disabled)"
+}
+else {
+  Write-Host "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] [confirmed] [no change] $registryPath $propertyName = $confirmedValue (disabled)"
 }
