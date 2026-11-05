@@ -3,6 +3,10 @@
   Audits VS Code telemetry settings and scans a project directory for
   suspicious tracking/telemetry scripts.
 
+.NOTES
+  Supports Windows PowerShell 5.1 and PowerShell 7. Settings must be valid JSON;
+  comments or trailing commas unsupported by the current parser are reported.
+
 .EXAMPLE
   .\Audit-VSCodeTelemetry.ps1
 
@@ -24,6 +28,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$runningOnWindows = $env:OS -eq 'Windows_NT'
+$runningOnMacOS = -not $runningOnWindows -and (Test-Path -LiteralPath '/System/Library/CoreServices')
 
 $results = [ordered]@{
     Timestamp         = (Get-Date).ToString("o")
@@ -84,7 +90,15 @@ function Read-JsonFile {
 
     try {
         $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
-        return $raw | ConvertFrom-Json -AsHashtable
+        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $parsed -or $parsed -isnot [pscustomobject]) {
+            throw "Expected a JSON object."
+        }
+        $settings = @{}
+        foreach ($property in $parsed.PSObject.Properties) {
+            $settings[$property.Name] = $property.Value
+        }
+        return $settings
     }
     catch {
         Add-Check -Status 'WARNING' -Name 'Settings JSON parsing' `
@@ -166,7 +180,7 @@ function Test-VSCodeSettings {
 function Get-VSCodeUserSettingsPaths {
     $paths = New-Object System.Collections.Generic.List[object]
 
-    if ($IsWindows) {
+    if ($runningOnWindows) {
         $paths.Add([pscustomobject]@{
             Scope = 'User'
             Path  = (Join-Path $env:APPDATA 'Code\User\settings.json')
@@ -176,7 +190,7 @@ function Get-VSCodeUserSettingsPaths {
             Path  = (Join-Path $env:APPDATA 'Code - Insiders\User\settings.json')
         })
     }
-    elseif ($IsMacOS) {
+    elseif ($runningOnMacOS) {
         $paths.Add([pscustomobject]@{
             Scope = 'User'
             Path  = (Join-Path $HOME 'Library/Application Support/Code/User/settings.json')
@@ -292,7 +306,7 @@ function Test-ExtensionTelemetry {
         return
     }
 
-    $extensionsRoot = if ($IsWindows) {
+    $extensionsRoot = if ($runningOnWindows) {
         Join-Path $env:USERPROFILE '.vscode\extensions'
     }
     else {
@@ -343,11 +357,11 @@ Test-SuspiciousFiles -Root $results.ScanPath
 Test-ExtensionTelemetry
 
 if ($results.Summary.Fail -gt 0 -or
-    ($results.Findings | Where-Object { $_.Severity -eq 'High' }).Count -gt 0) {
+    @($results.Findings | Where-Object { $_.Severity -eq 'High' }).Count -gt 0) {
     $results.Summary.Risk = 'High'
 }
 elseif ($results.Summary.Warning -gt 0 -or
-        ($results.Findings | Where-Object { $_.Severity -in @('Medium', 'Low') }).Count -gt 0) {
+        @($results.Findings | Where-Object { $_.Severity -in @('Medium', 'Low') }).Count -gt 0) {
     $results.Summary.Risk = 'Medium'
 }
 else {

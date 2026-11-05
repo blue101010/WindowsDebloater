@@ -41,7 +41,7 @@ function Show-ForceRelocateSummary {
 	try {
 		$state = (Get-ProcessMitigation -System).ASLR.ForceRelocateImages
 		$message = "$Prefix Mandatory ASLR (ForceRelocateImages): $state"
-		$color = $state -eq 'ON' ? 'Green' : 'Yellow'
+		$color = if ($state -eq 'ON') { 'Green' } else { 'Yellow' }
 		Write-Host $message -ForegroundColor $color
 	}
 	catch {

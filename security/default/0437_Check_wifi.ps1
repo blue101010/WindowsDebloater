@@ -7,6 +7,7 @@
     security posture (auth/cipher), IP configuration, DHCP/DNS status, and stored profiles.
     Includes a cancellable connectivity probe to avoid Test-NetConnection hanging while
     still surfacing DNS/ICMP diagnostics.
+    Compatible with Windows PowerShell 5.1; ICMP replies have a per-probe timeout.
 
 .NOTES
     Run from an elevated PowerShell session for complete CIM/IP configuration details.
@@ -39,9 +40,21 @@ function Invoke-ConnectivityCheck {
 
     # ICMP reachability
     try {
-        $pingSuccess = Test-Connection -TargetName $TargetHost -Count $PingCount -Quiet -TimeoutSeconds $PingTimeoutSeconds -ErrorAction Stop
-        $pingMessage = $pingSuccess ? 'Success' : 'No reply'
-        $color = $pingSuccess ? 'Green' : 'Yellow'
+        $ping = New-Object System.Net.NetworkInformation.Ping
+        try {
+            $pingSuccess = $false
+            for ($i = 0; $i -lt $PingCount; $i++) {
+                $reply = $ping.Send($TargetHost, ($PingTimeoutSeconds * 1000))
+                if ($reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success) {
+                    $pingSuccess = $true
+                }
+            }
+        }
+        finally {
+            $ping.Dispose()
+        }
+        $pingMessage = if ($pingSuccess) { 'Success' } else { 'No reply' }
+        $color = if ($pingSuccess) { 'Green' } else { 'Yellow' }
         Write-Host ("  ICMP Reachability : {0}" -f $pingMessage) -ForegroundColor $color
     }
     catch {
@@ -118,7 +131,7 @@ foreach ($wifi in $wifiAdapters) {
     # Basic adapter info
     Write-Item "Name" $wifi.Name 'White'
     Write-Item "InterfaceIndex" $wifi.ifIndex 'White'
-    Write-Item "Status" $wifi.Status ($wifi.Status -eq 'Up' ? 'Green' : 'Red')
+    Write-Item "Status" $wifi.Status $(if ($wifi.Status -eq 'Up') { 'Green' } else { 'Red' })
     Write-Item "LinkSpeed" $wifi.LinkSpeed 'White'
     Write-Item "MAC Address" $wifi.MacAddress 'White'
     Write-Item "InterfaceDescription" $wifi.InterfaceDescription 'White'
@@ -136,9 +149,9 @@ foreach ($wifi in $wifiAdapters) {
     $txRate = Get-NetshValue $netsh 'Transmit rate (Mbps)'
 
     # Display runtime wireless info
-    Write-Item "Current SSID" ($ssid ? $ssid : 'N/A') 'White'
-    Write-Item "BSSID" ($bssid ? $bssid : 'N/A') 'White'
-    Write-Item "Radio Type" ($radio ? $radio : 'N/A') 'White'
+    Write-Item "Current SSID" $(if ($ssid) { $ssid } else { 'N/A' }) 'White'
+    Write-Item "BSSID" $(if ($bssid) { $bssid } else { 'N/A' }) 'White'
+    Write-Item "Radio Type" $(if ($radio) { $radio } else { 'N/A' }) 'White'
     # Security evaluation
     $secColor = 'Yellow'
     if ($auth) {
@@ -146,13 +159,13 @@ foreach ($wifi in $wifiAdapters) {
         elseif ($auth -match 'WEP|Open') { $secColor='Red' }
         else { $secColor='Yellow' }
     }
-    Write-Item "Authentication" ($auth ? $auth : 'N/A') $secColor
-    Write-Item "Cipher" ($cipher ? $cipher : 'N/A') $secColor
+    Write-Item "Authentication" $(if ($auth) { $auth } else { 'N/A' }) $secColor
+    Write-Item "Cipher" $(if ($cipher) { $cipher } else { 'N/A' }) $secColor
 
-    Write-Item "Channel" ($channel ? $channel : 'N/A') 'White'
-    Write-Item "Signal" ($signal ? $signal : 'White')
-    Write-Item "RX Rate (Mbps)" ($rxRate ? $rxRate : 'N/A') 'White'
-    Write-Item "TX Rate (Mbps)" ($txRate ? $txRate : 'N/A') 'White'
+    Write-Item "Channel" $(if ($channel) { $channel } else { 'N/A' }) 'White'
+    Write-Item "Signal" $(if ($signal) { $signal } else { 'N/A' }) 'White'
+    Write-Item "RX Rate (Mbps)" $(if ($rxRate) { $rxRate } else { 'N/A' }) 'White'
+    Write-Item "TX Rate (Mbps)" $(if ($txRate) { $txRate } else { 'N/A' }) 'White'
 
     # IP configuration
     $ipcfg = Get-NetIPConfiguration -InterfaceIndex $wifi.ifIndex -ErrorAction SilentlyContinue
@@ -162,10 +175,10 @@ foreach ($wifi in $wifiAdapters) {
         $gw4 = ($ipcfg.IPv4DefaultGateway).NextHop
         $gw6 = ($ipcfg.IPv6DefaultGateway).NextHop
         Write-Host "`nIP Configuration:" -ForegroundColor Cyan
-        Write-Item "IPv4 Address" ($ipv4 ? $ipv4 : 'None') 'White'
-        Write-Item "IPv4 Gateway" ($gw4 ? $gw4 : 'None') 'White'
-        Write-Item "IPv6 Address" ($ipv6 ? $ipv6 : 'None') 'White'
-        Write-Item "IPv6 Gateway" ($gw6 ? $gw6 : 'None') 'White'
+        Write-Item "IPv4 Address" $(if ($ipv4) { $ipv4 } else { 'None' }) 'White'
+        Write-Item "IPv4 Gateway" $(if ($gw4) { $gw4 } else { 'None' }) 'White'
+        Write-Item "IPv6 Address" $(if ($ipv6) { $ipv6 } else { 'None' }) 'White'
+        Write-Item "IPv6 Gateway" $(if ($gw6) { $gw6 } else { 'None' }) 'White'
     } else {
         Write-Host "`nIP Configuration: N/A" -ForegroundColor Yellow
     }
@@ -186,25 +199,25 @@ foreach ($wifi in $wifiAdapters) {
         $useSuffixWhenRegistering = $wmi.UseSuffixWhenRegistering
 
         # Determine default flags: DHCP enabled => default, DNS via DHCP => default
-        $dhcpColor = $dhcpEnabled ? 'DarkYellow' : 'Green'  # enabled is default -> DarkYellow
+        $dhcpColor = if ($dhcpEnabled) { 'DarkYellow' } else { 'Green' }  # enabled is default -> DarkYellow
         Write-Host "`nAdapter Service Settings:" -ForegroundColor Cyan
-        Write-Item "DHCP Enabled" ($dhcpEnabled ? 'Yes (default)' : 'No (static)') $dhcpColor
-        Write-Item "DHCP Server" ($dhcpServer ? $dhcpServer : 'N/A') 'White'
-        Write-Item "DHCP Lease Obtained" ($dhcpLeaseObtained ? $dhcpLeaseObtained : 'N/A') 'White'
-        Write-Item "DHCP Lease Expires" ($dhcpLeaseExpires ? $dhcpLeaseExpires : 'N/A') 'White'
+        Write-Item "DHCP Enabled" $(if ($dhcpEnabled) { 'Yes (default)' } else { 'No (static)' }) $dhcpColor
+        Write-Item "DHCP Server" $(if ($dhcpServer) { $dhcpServer } else { 'N/A' }) 'White'
+        Write-Item "DHCP Lease Obtained" $(if ($dhcpLeaseObtained) { $dhcpLeaseObtained } else { 'N/A' }) 'White'
+        Write-Item "DHCP Lease Expires" $(if ($dhcpLeaseExpires) { $dhcpLeaseExpires } else { 'N/A' }) 'White'
 
         if ($dnsList) {
-            $dnsColor = ($dhcpEnabled -and $dnsList) ? 'DarkYellow' : 'Green'
+            $dnsColor = if ($dhcpEnabled -and $dnsList) { 'DarkYellow' } else { 'Green' }
             Write-Item "DNS Servers" $dnsList $dnsColor
         } else {
             Write-Item "DNS Servers" 'None' 'Yellow'
         }
 
-        Write-Item "Primary DNS Suffix" ($dnsSuffix ? $dnsSuffix : 'N/A') 'White'
-        Write-Item "DNS HostName" ($dnsHostName ? $dnsHostName : 'N/A') 'White'
-        Write-Item "DNS Suffix Search Order" ($dnsSearchOrder ? $dnsSearchOrder : 'N/A') 'White'
-        Write-Item "Register This Conn Address" ($registerAddress ? 'Yes' : 'No') 'White'
-        Write-Item "Use Suffix When Reg." ($useSuffixWhenRegistering ? 'Yes' : 'No') 'White'
+        Write-Item "Primary DNS Suffix" $(if ($dnsSuffix) { $dnsSuffix } else { 'N/A' }) 'White'
+        Write-Item "DNS HostName" $(if ($dnsHostName) { $dnsHostName } else { 'N/A' }) 'White'
+        Write-Item "DNS Suffix Search Order" $(if ($dnsSearchOrder) { $dnsSearchOrder } else { 'N/A' }) 'White'
+        Write-Item "Register This Conn Address" $(if ($registerAddress) { 'Yes' } else { 'No' }) 'White'
+        Write-Item "Use Suffix When Reg." $(if ($useSuffixWhenRegistering) { 'Yes' } else { 'No' }) 'White'
 
         # ipconfig /all excerpt for the interface to show DHCP/DNS lines
         $ipcfgAll = ipconfig /all
@@ -254,8 +267,10 @@ foreach ($wifi in $wifiAdapters) {
         $pf = netsh wlan show profile name="$currentProfile" key=clear 2>$null | ForEach-Object { $_.Trim() }
         $pfAuth = Get-NetshValue $pf 'Authentication'
         $pfCipher = Get-NetshValue $pf 'Cipher'
-        Write-Item "Profile Authentication" ($pfAuth ? $pfAuth : 'N/A') ($pfAuth -match 'WPA3|WPA2' ? 'Green' : ($pfAuth -match 'WEP|Open' ? 'Red':'Yellow'))
-        Write-Item "Profile Cipher" ($pfCipher ? $pfCipher : 'N/A') ($pfCipher -match 'CCMP|AES' ? 'Green' : ($pfCipher -match 'TKIP|WEP' ? 'Red':'Yellow'))
+        $authColor = if ($pfAuth -match 'WPA3|WPA2') { 'Green' } elseif ($pfAuth -match 'WEP|Open') { 'Red' } else { 'Yellow' }
+        $cipherColor = if ($pfCipher -match 'CCMP|AES') { 'Green' } elseif ($pfCipher -match 'TKIP|WEP') { 'Red' } else { 'Yellow' }
+        Write-Item "Profile Authentication" $(if ($pfAuth) { $pfAuth } else { 'N/A' }) $authColor
+        Write-Item "Profile Cipher" $(if ($pfCipher) { $pfCipher } else { 'N/A' }) $cipherColor
     } else {
         Write-Host "`nNo matching profile detected or SSID not present in profiles list." -ForegroundColor Yellow
     }

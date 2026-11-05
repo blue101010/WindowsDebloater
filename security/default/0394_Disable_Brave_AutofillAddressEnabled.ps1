@@ -4,6 +4,8 @@ This script disables the save and fill of address functionality in the Brave bro
 
 .DESCRIPTION
 The script checks if the registry key for Brave exists and creates it if it doesn't.
+Sets AutofillAddressEnabled to DWORD 0 for the current user and reads it back
+before confirming status. Registry access and verification failures stop execution.
 
 .PARAMETER None
 
@@ -25,17 +27,26 @@ Function Set-BravePolicy {
         [string]$Key,
         [int]$Value
     )
-    If ($null -ne  (Get-ItemProperty -Path $BravePolicyPath -Name $Key -ErrorAction SilentlyContinue) ) {
-        Set-ItemProperty -Path $BravePolicyPath -Name $Key -Value $Value
-        Write-Host "[0394_Disable_Brave_AutofillAddressEnabled] The key '$Key' was already set. It has been reconfirmed as disabled."
-    } else {
-        New-ItemProperty -Path $BravePolicyPath -Name $Key -Value $Value -PropertyType DWORD
-        Write-Host "[0394_Disable_Brave_AutofillAddressEnabled] The key '$Key' did not exist. It has been created and set as disabled."
+    if (-not (Test-Path -LiteralPath $BravePolicyPath -ErrorAction Stop)) {
+        Write-Host "[0394_Disable_Brave_AutofillAddressEnabled] Registry key missing: $BravePolicyPath. Creating it..."
+        New-Item -Path $BravePolicyPath -Force -ErrorAction Stop | Out-Null
     }
+    $properties = Get-ItemProperty -Path $BravePolicyPath -ErrorAction Stop
+    $property = $properties.PSObject.Properties[$Key]
+    $status = "no change"
+    if ($null -eq $property -or $property.Value -ne $Value) {
+        Set-ItemProperty -Path $BravePolicyPath -Name $Key -Value $Value -Type DWORD -Force -ErrorAction Stop
+        $status = "changed"
+    }
+    $confirmedValue = Get-ItemPropertyValue -Path $BravePolicyPath -Name $Key -ErrorAction Stop
+    if ($null -eq $confirmedValue -or $confirmedValue -ne $Value) {
+        throw "[0394_Disable_Brave_AutofillAddressEnabled] Verification failed: $Key = '$confirmedValue'; expected $Value."
+    }
+    Write-Host "[0394_Disable_Brave_AutofillAddressEnabled] [confirmed] [$status] $Key = $confirmedValue (disabled)"
 }
 
 Set-BravePolicy -Key "AutofillAddressEnabled" -Value 0
 
 # Output the current settings
 Write-Host "[0394_Disable_Brave_AutofillAddressEnabled] Current config is so : "
-Get-ItemProperty -Path $BravePolicyPath
+Get-ItemProperty -Path $BravePolicyPath -ErrorAction Stop

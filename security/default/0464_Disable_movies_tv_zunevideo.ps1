@@ -17,5 +17,5 @@ foreach ($pattern in $patterns) {
 }
 
 if (-not $removed) {
-    Write-Host "[NO APP]  Movies & TV (ZuneVideo) not found — nothing to remove." -ForegroundColor Yellow
+    Write-Host "[NO APP]  Movies & TV (ZuneVideo) not found - nothing to remove." -ForegroundColor Yellow
 }
