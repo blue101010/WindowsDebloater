@@ -9,6 +9,8 @@ This script disables the Windows Customer Experience Improvement Program by modi
 
 .DESCRIPTION
 The function Set-RegistryValue is used to set a registry value at the specified path. If the property doesn't exist, it creates it and sets the value. If the property exists and its value is different from the specified value, it adjusts the value. If the property exists and its value is already the specified value, no modification is made.
+Missing registry keys are created before writing values. Registry access errors stop execution.
+Run as Administrator to update the HKLM policy. CorporateSQMURL is written as a String.
 
 .PARAMETER path
 The registry path where the property is located.
@@ -33,16 +35,23 @@ function Set-RegistryValue {
         [string]$propertyType = "DWORD"
     )
 
-    $existingValue = Get-ItemProperty -Path $path -Name $propertyName -ErrorAction SilentlyContinue
     $title="[0055_Disable_windows_customer_experience_improvement_program_CorporateSQMURL]"
 
-    if (-not $existingValue) {
+    if (-not (Test-Path -Path $path -ErrorAction Stop)) {
+        Write-Host "$title Registry path does not exist: $path. Creating it..."
+        New-Item -Path $path -Force -ErrorAction Stop | Out-Null
+    }
+
+    $properties = Get-ItemProperty -Path $path -ErrorAction Stop
+    $property = $properties.PSObject.Properties[$propertyName]
+
+    if ($null -eq $property) {
         # If the property doesn't exist, create it
-        New-ItemProperty -Path $path -Name $propertyName -Value $value -PropertyType $propertyType -Force
+        New-ItemProperty -Path $path -Name $propertyName -Value $value -PropertyType $propertyType -Force -ErrorAction Stop | Out-Null
         Write-Host "$title [$propertyName] created and set to $value"
-    } elseif ($existingValue.$propertyName -ne $value) {
+    } elseif ($property.Value -ne $value) {
         # If the property exists and its value is not $value, set its value
-        Set-ItemProperty -Path $path -Name $propertyName -Value $value
+        Set-ItemProperty -Path $path -Name $propertyName -Value $value -Type $propertyType -Force -ErrorAction Stop
         Write-Host "$title [$propertyName] adjusted to $value"
     } else {
         # If the property exists and its value is already $value
@@ -51,4 +60,3 @@ function Set-RegistryValue {
 }
 
 Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\SQMClient" -PropertyName "CorporateSQMURL" -Value "0.0.0.0" -PropertyType "String"
-

@@ -1,12 +1,15 @@
 # ! Warning: This script is intended for use with the Brave browser only and to block ALL cookies, JavaScript, pop-ups, ads, and trackers. 
 #Use with caution as it may affect the functionality of some websites.
 # Modify the settings as needed to suit your requirements. !
-
-# Define the path to Brave's preferences file
-$BravePrefsPath = "$env:APPDATA\BraveSoftware\Brave-Browser\User Data\Default\Preferences"
+# Close Brave before running. For another profile, pass -BravePrefsPath using
+# the Profile Path shown in brave://version, followed by \Preferences.
+[CmdletBinding()]
+param(
+    [string]$BravePrefsPath = "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\Default\Preferences"
+)
 
 # Check if the preferences file exists
-if (Test-Path $BravePrefsPath) {
+if (Test-Path -LiteralPath $BravePrefsPath -PathType Leaf -ErrorAction Stop) {
     # Read the existing preferences
     $BravePrefs = Get-Content $BravePrefsPath -Raw | ConvertFrom-Json
 
@@ -47,5 +50,5 @@ if (Test-Path $BravePrefsPath) {
 
     Write-Output "Brave browser has been hardened successfully."
 } else {
-    Write-Output "Brave preferences file not found. Ensure Brave is installed and has been run at least once."
+    Write-Warning "Brave preferences file not found: $BravePrefsPath. Run Brave once for this Windows user, or pass -BravePrefsPath for another profile. No changes made."
 }

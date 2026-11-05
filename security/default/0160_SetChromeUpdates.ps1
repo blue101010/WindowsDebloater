@@ -12,8 +12,8 @@ if (! (test-path function:Log)) { function Log { Param([string]$message) Write-H
 function SetChromeUpdates
 {
     Param(
-        [Parameter(Position=0, Mandatory=120)]
-        [boolean]$allowChromeUpdates=$true
+        [Parameter(Position=0, Mandatory=$true)]
+        [boolean]$allowChromeUpdates
     )
     $updateText = "Enabling"
     
@@ -53,4 +53,3 @@ function SetChromeUpdates
         Log "Stopped Google update services(s)."
     }
 }
-

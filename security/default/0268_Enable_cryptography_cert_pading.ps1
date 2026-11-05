@@ -5,6 +5,10 @@
     Creates two registry entries to mitigate WinVerifyTrust Signature Validation Vulnerability CVE-2013-3900
 .DESCRIPTION
     This script creates the two necessary registry entries to mitigate WinVerifyTrust Signature Validation Vulnerability CVE-2013-3900 
+    Creates missing keys, sets EnableCertPaddingCheck to String "1", and verifies
+    each applicable registry view. Run as Administrator in 64-bit PowerShell on
+    64-bit Windows. Registry access and verification failures stop execution.
+    Reports registry configuration, not a live WinVerifyTrust test.
     https://msrc.microsoft.com/update-guide/vulnerability/CVE-2013-3900    
   #https://github.com/tpn/winddk-8.1/blob/master/Include/um/WinTrust.h
 #https://www-bleepingcomputer-com.cdn.ampproject.org/c/s/www.bleepingcomputer.com/news/microsoft/10-year-old-windows-bug-with-opt-in-fix-exploited-in-3cx-attack/amp/
@@ -13,54 +17,35 @@
 
 
 
-$RegentryName = "EnableCertPaddingCheck"
-$path1 = "HKLM:\SOFTWARE\Microsoft\Cryptography"
-$path2 = "$path1\Wintrust"
-$32bitpath = "$path2\Config"
-$path3 = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Cryptography"
-$path4 = "$path3\Wintrust"
-$64bitpath = "$path4\Config"
-
-function Check-MitigationStatus { 
-  $cve_2013_3900_regKey32bit = Get-ItemProperty -Path $32bitpath -Name $RegentryName
-  $cve_2013_3900_regKey64bit = Get-ItemProperty -Path $64bitpath -Name $RegentryName -ErrorAction SilentlyContinue
-  $cve_2013_3900_32bitMitigated = ($cve_2013_3900_regKey32bit.EnableCertPaddingCheck -eq 1)
-  $cve_2013_3900_64bitMitigated = ![Environment]::Is64BitOperatingSystem -or ($cve_2013_3900_regKey64bit.EnableCertPaddingCheck -eq 1)
-  
-  if ($cve_2013_3900_32bitMitigated) {
-    Write-Output "32 bits : $32bitpath  CVE_2013_3900_mitigation_status : Mitigated"
-  }
-  
-  if ($cve_2013_3900_64bitMitigated) {
-    Write-Output "64 bits : $64bitpath  CVE_2013_3900_mitigation_status : Mitigated"
-  }
-  
-  if ($cve_2013_3900_32bitMitigated -and $cve_2013_3900_64bitMitigated) {
-    Write-Output "ALL 32 bits and 64 bits : CVE_2013_3900_mitigation_status : Mitigated"
-  } else {
-    Write-Output "ALL 32 bits and 64 bits : CVE_2013_3900_mitigation_status : NOT Mitigated"
-    
-    Write-Output "Mitigating CVE_2013_3900..."
-    New-Item -Path $path1 -Name "Wintrust" -Force
-    New-Item -Path $path2 -Name "Config" -Force
-    New-Item -Path $path3 -Name "Wintrust" -Force
-    New-Item -Path $path4 -Name "Config" -Force
-    New-ItemProperty -Path $32bitpath -Name $RegentryName -Value "1"
-    New-ItemProperty -Path $64bitpath -Name $RegentryName -Value "1"
-    
-    if ($cve_2013_3900_32bitMitigated) {
-      Write-Output "32 bits : $32bitpath  CVE_2013_3900_mitigation_status : Mitigated"
-    }  
-    
-    if ($cve_2013_3900_64bitMitigated) {
-      Write-Output "64 bits : $64bitpath  CVE_2013_3900_mitigation_status : Mitigated"
-    }
-    
-  }
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+  throw "[0268_Enable_cryptography_cert_pading] Run in 64-bit PowerShell to configure both registry views."
 }
 
+$RegentryName = "EnableCertPaddingCheck"
+$registryPaths = @("HKLM:\SOFTWARE\Microsoft\Cryptography\Wintrust\Config")
+if ([Environment]::Is64BitOperatingSystem) {
+  $registryPaths += "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Wintrust\Config"
+}
 
-# Check and Mitigate
-Check-MitigationStatus
-
+foreach ($path in $registryPaths) {
+  $modified = $false
+  if (-not (Test-Path -LiteralPath $path -ErrorAction Stop)) {
+    Write-Output "[0268_Enable_cryptography_cert_pading] Registry key missing: $path. Creating it..."
+    New-Item -Path $path -Force -ErrorAction Stop | Out-Null
+  }
+  $properties = Get-ItemProperty -Path $path -ErrorAction Stop
+  $property = $properties.PSObject.Properties[$RegentryName]
+  if ($null -eq $property -or $property.Value -ne "1") {
+    Set-ItemProperty -Path $path -Name $RegentryName -Value "1" -Type String -Force -ErrorAction Stop
+    $modified = $true
+  }
+  $confirmedValue = Get-ItemPropertyValue -Path $path -Name $RegentryName -ErrorAction Stop
+  if ($confirmedValue -ne "1") {
+    throw "[0268_Enable_cryptography_cert_pading] Verification failed: $path $RegentryName = '$confirmedValue'; expected 1."
+  }
+  $view = if ($path -like "*\Wow6432Node\*" -or -not [Environment]::Is64BitOperatingSystem) { "32-bit" } else { "64-bit" }
+  $status = if ($modified) { "changed" } else { "no change" }
+  Write-Output "[0268_Enable_cryptography_cert_pading] [confirmed] [$status] $view : $path $RegentryName = $confirmedValue"
+}
+Write-Output "[0268_Enable_cryptography_cert_pading] CVE-2013-3900 mitigation registry configuration confirmed in all applicable views."
 

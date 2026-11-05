@@ -32,6 +32,33 @@ Git configuration:
 powershell -NoProfile -File .\tests\0002_git_config_global.Tests.ps1
 ```
 
+### Blocking mshta with AppLocker
+
+[`security/default/0222_block_mshta.ps1`](security/default/0222_block_mshta.ps1)
+merges enforced deny rules for `mshta.exe`, including renamed Microsoft-signed
+copies. Run as Administrator on Windows with AppLocker enforcement support:
+
+```powershell
+.\security\default\0222_block_mshta.ps1 -WhatIf
+.\security\default\0222_block_mshta.ps1
+```
+
+Review existing AppLocker policy and take a system backup first. The script
+preserves existing rules and refuses to enforce existing audit-only executable
+rules. Allow baselines are added only for empty executable/packaged-app collections
+to prevent unrelated applications being implicitly blocked. It enables automatic
+startup of Application Identity, which can activate other existing collections;
+that startup setting cannot be reverted to Manual with `sc.exe`. Failures do not
+roll back changes. `[confirmed]` means effective policy evaluation denies installed
+mshta binaries and the service is running, not that a live launch was tested.
+Renamed unsigned replacements are not covered.
+
+Run isolated tests without installing policy or changing services:
+
+```powershell
+powershell -NoProfile -File .\tests\0222_block_mshta.Tests.ps1
+```
+
 ## Credits
 
 This is using various ideas from various initial sources.

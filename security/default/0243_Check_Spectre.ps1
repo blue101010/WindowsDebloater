@@ -1,5 +1,5 @@
 #
-#https://support.microsoft.com/en-us/topic/understanding-get-speculationcontrolsettings-powershell-script-output-fd70a80a-a63f-e539-cda5-5be4c9e67c04                                                                                                                                                              PS C:\Users\fhp> Import-Module SpeculationControl
+#https://support.microsoft.com/en-us/topic/understanding-get-speculationcontrolsettings-powershell-script-output-fd70a80a-a63f-e539-cda5-5be4c9e67c04
 
 #Windows Server guidance to protect against speculative execution side-channel vulnerabilities  (SPECTRE)
 
@@ -22,5 +22,9 @@
 # Windows OS support for PCID performance optimization is enabled: True [not required for security]
 #######
 
-Install-Module SpeculationControl                                                                                                                                                               PS C:\Users\fhp> Import-Module SpeculationControl
-Get-SpeculationControlSettings
+# Installs for the current user only when missing; requires PowerShell Gallery access.
+if (-not (Get-Module -ListAvailable -Name SpeculationControl -ErrorAction Stop)) {
+    Install-Module -Name SpeculationControl -Scope CurrentUser -ErrorAction Stop
+}
+Import-Module -Name SpeculationControl -ErrorAction Stop
+Get-SpeculationControlSettings -ErrorAction Stop

@@ -4,6 +4,7 @@ This script disables Cortana and modifies related registry values.
 
 .DESCRIPTION
 The script disables Cortana by setting various registry values to specific values. It checks if the registry values already exist and if their values need to be modified.
+Missing registry keys are created before writing values. Registry access errors stop execution.
 
 .PARAMETER path
 The registry path where the property exists or needs to be created.
@@ -33,15 +34,21 @@ function Set-RegistryValue {
         [string]$propertyType = "DWORD"
     )
 
-    $existingValue = Get-ItemProperty -Path $path -Name $propertyName -ErrorAction SilentlyContinue
+    if (-not (Test-Path -Path $path -ErrorAction Stop)) {
+        Write-Host "[$propertyName] Registry path does not exist: $path. Creating it..."
+        New-Item -Path $path -Force -ErrorAction Stop | Out-Null
+    }
 
-    if (-not $existingValue) {
+    $properties = Get-ItemProperty -Path $path -ErrorAction Stop
+    $property = $properties.PSObject.Properties[$propertyName]
+
+    if ($null -eq $property) {
         # If the property doesn't exist, create it
-        New-ItemProperty -Path $path -Name $propertyName -Value $value -PropertyType $propertyType -Force
+        New-ItemProperty -Path $path -Name $propertyName -Value $value -PropertyType $propertyType -Force -ErrorAction Stop | Out-Null
         Write-Host "[$propertyName] created and set to $value"
-    } elseif ($existingValue.$propertyName -ne $value) {
+    } elseif ($property.Value -ne $value) {
         # If the property exists and its value is not $value, set its value
-        Set-ItemProperty -Path $path -Name $propertyName -Value $value
+        Set-ItemProperty -Path $path -Name $propertyName -Value $value -Type $propertyType -Force -ErrorAction Stop
         Write-Host "[$propertyName] adjusted to $value"
     } else {
         # If the property exists and its value is already $value

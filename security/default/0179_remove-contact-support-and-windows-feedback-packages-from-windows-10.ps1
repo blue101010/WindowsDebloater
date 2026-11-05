@@ -1,4 +1,6 @@
 #https://hinchley.net/articles/remove-contact-support-and-windows-feedback-packages-from-windows-10/
+# Targets Windows 10 build 10240 packages. Missing packages are skipped.
+# Run as Administrator. Registry access errors stop package removal.
 
 function Enable-Privilege {
   param($Privilege)
@@ -49,22 +51,34 @@ function Take-Over($path) {
   $owner = [Security.Principal.NTAccount]'Administrators'
 
   $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($path, 'ReadWriteSubTree', 'TakeOwnership')
-  $acl = $key.GetAccessControl()
-  $acl.SetOwner($owner)
-  $key.SetAccessControl($acl)
+  if ($null -eq $key) {
+    throw "[0179_remove-contact-support-and-windows-feedback-packages-from-windows-10] Cannot take ownership: registry key HKLM:\$path no longer exists."
+  }
+  try {
+    $acl = $key.GetAccessControl()
+    $acl.SetOwner($owner)
+    $key.SetAccessControl($acl)
 
-  $acl = $key.getaccesscontrol()
-  $rule = New-Object System.Security.AccessControl.RegistryAccessRule "Administrators", "FullControl", "ContainerInherit", "None", "Allow"
-  $acl.SetAccessRule($rule)
-  $key.SetAccessControl($acl)
+    $acl = $key.getaccesscontrol()
+    $rule = New-Object System.Security.AccessControl.RegistryAccessRule "Administrators", "FullControl", "ContainerInherit", "None", "Allow"
+    $acl.SetAccessRule($rule)
+    $key.SetAccessControl($acl)
+  }
+  finally {
+    $key.Dispose()
+  }
 }
 
 do {} until (Enable-Privilege SeTakeOwnershipPrivilege)
 
 function Remove-Package($name) {
   $key = "SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages\$name"
+  if (-not (Test-Path -LiteralPath "HKLM:\$key" -ErrorAction Stop)) {
+    Write-Host "[0179_remove-contact-support-and-windows-feedback-packages-from-windows-10] [skipped] Package is not installed: $name"
+    return
+  }
   Take-Over $key
-  Remove-Item -Path HKLM:"$key\Owners" -Force -Recurse
+  Remove-Item -LiteralPath "HKLM:\$key\Owners" -Force -Recurse -ErrorAction Stop
   & C:\Windows\System32\PkgMgr.exe /up:$name /norestart /quiet
 }
 
