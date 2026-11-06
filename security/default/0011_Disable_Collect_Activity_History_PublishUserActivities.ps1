@@ -3,7 +3,10 @@
 Disables the collection of activity history in Windows 10 and Windows 11.
 
 .DESCRIPTION
-This script disables the collection of activity history in Windows 10 by modifying the registry value for PublishUserActivities.
+This script disables publishing activity history in Windows 10 and Windows 11
+by setting PublishUserActivities to DWORD 0. Creates the policy key if needed.
+Registry access errors stop execution.
+If not elevated, requests UAC consent and relaunches as Administrator.
 
 .NOTES
 - This script requires administrative privileges to modify the registry.
@@ -17,21 +20,50 @@ This script disables the collection of activity history in Windows 10 by modifyi
 This script does not accept any parameters.
 
 .EXAMPLE
-Disable-CollectActivityHistory
+.\0011_Disable_Collect_Activity_History_PublishUserActivities.ps1
+Approve the UAC prompt if the current PowerShell session is not elevated.
 
 #>
+$principal = New-Object Security.Principal.WindowsPrincipal -ArgumentList ([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+  Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] Requesting administrator privileges through UAC..."
+  $executableName = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
+  $powerShellExecutable = Join-Path $PSHOME $executableName
+  try {
+    $elevatedProcess = Start-Process -FilePath $powerShellExecutable -ArgumentList "-NoProfile -File `"$PSCommandPath`"" -Verb RunAs -Wait -PassThru -ErrorAction Stop
+  }
+  catch {
+    throw "Administrator elevation failed or was cancelled: $($_.Exception.Message)"
+  }
+  if ($elevatedProcess.ExitCode -ne 0) {
+    throw "The elevated script failed with exit code $($elevatedProcess.ExitCode)."
+  }
+  return
+}
+
 $publishUserActivitiesPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
-$publishUserActivitiesValue = Get-ItemProperty -Path $publishUserActivitiesPath
+if (-not (Test-Path -Path $publishUserActivitiesPath -ErrorAction Stop)) {
+  Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] Policy key does not exist. Creating it..."
+  New-Item -Path $publishUserActivitiesPath -Force -ErrorAction Stop | Out-Null
+}
 
-Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] Initial value of PublishUserActivities: $($publishUserActivitiesValue.PublishUserActivities)"
+$publishUserActivitiesValue = Get-ItemProperty -Path $publishUserActivitiesPath -ErrorAction Stop
+$property = $publishUserActivitiesValue.PSObject.Properties["PublishUserActivities"]
+if ($null -eq $property) {
+  Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] PublishUserActivities does not exist. Creating it..."
+}
+else {
+  Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] Initial value of PublishUserActivities: $($property.Value)"
+}
 
-if ($publishUserActivitiesValue.PublishUserActivities -ne 0) {
-  Set-ItemProperty -Path $publishUserActivitiesPath -Name "PublishUserActivities" -Value 0
-  $publishUserActivitiesValue = Get-ItemProperty -Path $publishUserActivitiesPath
+if ($null -eq $property -or $property.Value -ne 0) {
+  Set-ItemProperty -Path $publishUserActivitiesPath -Name "PublishUserActivities" -Value 0 -Type DWORD -Force -ErrorAction Stop
+  $publishUserActivitiesValue = Get-ItemProperty -Path $publishUserActivitiesPath -ErrorAction Stop
+  if ($publishUserActivitiesValue.PublishUserActivities -ne 0) {
+    throw "PublishUserActivities verification failed: expected 0 after the registry write."
+  }
   Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] Updated value of PublishUserActivities: $($publishUserActivitiesValue.PublishUserActivities)"
 }
 else {
   Write-Host "[0011_Disable_Collect_Activity_History_PublishUserActivities] No change: PublishUserActivities is already set to 0"
 }
-
-

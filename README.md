@@ -16,6 +16,23 @@ A current profile (TBC) would be the update of the day sequence of each required
 
 This tool is mainly focused on a **powershell** approach and add others scripts ( batch, powershell, python, ansible ) for reference. Scripts are in <https://github.com/blue101010/Windows10Debloater/tree/master/security/default> directory.
 
+### Disabling activity history publishing
+
+[`security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1`](security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1)
+requests administrator privileges through **UAC** when run from a non-elevated
+session. Approve the prompt to continue in an elevated PowerShell process.
+Cancellation, launch errors, and elevated-script failures stop execution with
+an error; already-elevated sessions do not prompt. It creates missing policy entries, sets
+`PublishUserActivities` to DWORD `0`, and verifies the updated value. Registry
+errors stop execution; if access is denied even when elevated, check registry
+permissions or organization policy rather than bypassing them.
+
+Run isolated tests without changing the registry or displaying UAC prompts:
+
+```powershell
+powershell -NoProfile -File .\tests\0011_Disable_Collect_Activity_History_PublishUserActivities.Tests.ps1
+```
+
 ### Global Git configuration
 
 [`security/default/0002_git_config_global.ps1`](security/default/0002_git_config_global.ps1)
