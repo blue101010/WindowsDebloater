@@ -120,10 +120,7 @@ Check also chrome://policy/
 "NetworkPredictionOptions"=dword:00000001
 "NewTabPageLocation"="https://www.chromium.org"
 "PasswordLeakDetectionEnabled"=dword:00000001
-<<<<<<< HEAD
-=======
 "PasswordManagerEnabled"=dword:00000001
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 "PasswordProtectionChangePasswordURL"="https://mydomain.com/change_password.html"
 "PasswordProtectionWarningTrigger"=dword:00000001
 "PolicyAtomicGroupsEnabled"=dword:00000001

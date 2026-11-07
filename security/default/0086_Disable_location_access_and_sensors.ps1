@@ -1,42 +1,50 @@
+﻿<#
+.SYNOPSIS
+Turns off Windows location services and sensors machine-wide through Group Policy registry values.
+
+.DESCRIPTION
+Equivalent to "Computer Configuration > Administrative Templates > Windows Components >
+Location and Sensors" policies. Sets these DWORD values to 1 under
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors:
+  DisableLocation                - Turn off location (no app or service can use location)
+  DisableLocationScripting       - Turn off location scripting
+  DisableSensors                 - Turn off sensors
+  DisableWindowsLocationProvider - Turn off the Windows Location Provider
+
+.NOTES
+- Run as Administrator (writes to HKLM).
+- Creates the key and values if missing, then reads each value back to confirm it.
+- Location-dependent features (Find my device, maps, weather, auto time zone) stop working.
+#>
+
+$scriptName = "0086_Disable_location_access_and_sensors"
 $locationKeyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors"
-$disableLocation = 1
-$disableLocationScripting = 1
-$disableSensors = 1
-$disableWindowsLocationProvider = 1
+$targetValue = 1
+$valueNames = @(
+    "DisableLocation",
+    "DisableLocationScripting",
+    "DisableSensors",
+    "DisableWindowsLocationProvider"
+)
 
-if (Test-Path $locationKeyPath) {
-    $currentDisableLocation = Get-ItemPropertyValue -Path $locationKeyPath -Name "DisableLocation" -ErrorAction SilentlyContinue
-    $currentDisableLocationScripting = Get-ItemPropertyValue -Path $locationKeyPath -Name "DisableLocationScripting" -ErrorAction SilentlyContinue
-    $currentDisableSensors = Get-ItemPropertyValue -Path $locationKeyPath -Name "DisableSensors" -ErrorAction SilentlyContinue
-    $currentDisableWindowsLocationProvider = Get-ItemPropertyValue -Path $locationKeyPath -Name "DisableWindowsLocationProvider" -ErrorAction SilentlyContinue
+if (-not (Test-Path -Path $locationKeyPath -ErrorAction Stop)) {
+    New-Item -Path $locationKeyPath -Force -ErrorAction Stop | Out-Null
+    Write-Host "[$scriptName] Created registry path: $locationKeyPath"
+}
 
-    if ($currentDisableLocation -eq $disableLocation) {
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableLocation is already set to $disableLocation"
-    } else {
-        Set-ItemProperty -Path $locationKeyPath -Name "DisableLocation" -Value $disableLocation
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableLocation has been set to $disableLocation"
+foreach ($name in $valueNames) {
+    $property = (Get-ItemProperty -Path $locationKeyPath -ErrorAction Stop).PSObject.Properties[$name]
+    $modified = $false
+    if ($null -eq $property -or $property.Value -ne $targetValue) {
+        Set-ItemProperty -Path $locationKeyPath -Name $name -Value $targetValue -Type DWORD -Force -ErrorAction Stop
+        $modified = $true
     }
 
-    if ($currentDisableLocationScripting -eq $disableLocationScripting) {
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableLocationScripting is already set to $disableLocationScripting"
-    } else {
-        Set-ItemProperty -Path $locationKeyPath -Name "DisableLocationScripting" -Value $disableLocationScripting
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableLocationScripting has been set to $disableLocationScripting"
+    $confirmedValue = Get-ItemPropertyValue -Path $locationKeyPath -Name $name -ErrorAction Stop
+    if ($confirmedValue -ne $targetValue) {
+        throw "[$scriptName] Verification failed: $locationKeyPath $name = $confirmedValue; expected $targetValue."
     }
 
-    if ($currentDisableSensors -eq $disableSensors) {
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableSensors is already set to $disableSensors"
-    } else {
-        Set-ItemProperty -Path $locationKeyPath -Name "DisableSensors" -Value $disableSensors
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableSensors has been set to $disableSensors"
-    }
-
-    if ($currentDisableWindowsLocationProvider -eq $disableWindowsLocationProvider) {
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableWindowsLocationProvider is already set to $disableWindowsLocationProvider"
-    } else {
-        Set-ItemProperty -Path $locationKeyPath -Name "DisableWindowsLocationProvider" -Value $disableWindowsLocationProvider
-        Write-Host "[0086_Disable_location_access_and_sensors] DisableWindowsLocationProvider has been set to $disableWindowsLocationProvider"
-    }
-} else {
-    Write-Host "[0086_Disable_location_access_and_sensors] LocationAndSensors key does not exist"
+    $status = if ($modified) { "[changed]" } else { "[no change]" }
+    Write-Host "[$scriptName] [confirmed] $status $locationKeyPath $name = $confirmedValue"
 }

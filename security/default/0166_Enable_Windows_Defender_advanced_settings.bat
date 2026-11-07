@@ -5,9 +5,6 @@
 :: Reset Defender to defaults. Commented out but available for reference
 ::"%programfiles%"\"Windows Defender"\MpCmdRun.exe -RestoreDefaults
 ::
-<<<<<<< HEAD
-
-=======
 :: Start Defender Service
 sc start WinDefend
 ::Enable Windows Defender sandboxing
@@ -16,7 +13,6 @@ setx /M MP_FORCE_USE_SANDBOX 1
 "%ProgramFiles%"\"Windows Defender"\MpCmdRun.exe -SignatureUpdate
 :: Enable Defender signatures for Potentially Unwanted Applications (PUA)
 powershell.exe Set-MpPreference -PUAProtection enable
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 :: Enable Defender periodic scanning
 reg add "HKCU\SOFTWARE\Microsoft\Windows Defender" /v PassiveMode /t REG_DWORD /d 2 /f
 :: Enable Cloud functionality of Windows Defender
@@ -25,11 +21,7 @@ powershell.exe Set-MpPreference -SubmitSamplesConsent Always
 ::
 :: Enable early launch antimalware driver for scan of boot-start drivers
 :: 3 is the default which allows good, unknown and 'bad but critical'. Recommend trying 1 for 'good and unknown' or 8 which is 'good only'
-<<<<<<< HEAD
-reg add "HKCU\SYSTEM\CurrentControlSet\Policies\EarlyLaunch" /v DriverLoadPolicy /t REG_DWORD /d 3 /fl
-=======
 reg add "HKCU\SYSTEM\CurrentControlSet\Policies\EarlyLaunch" /v DriverLoadPolicy /t REG_DWORD /d 3 /f
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 ::
 :: Enable ASR rules in Win10 1903 ExploitGuard to mitigate Office malspam
 :: Blocks Office childprocs, Office proc injection, Office win32 api calls & executable content creation

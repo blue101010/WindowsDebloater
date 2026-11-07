@@ -2907,9 +2907,6 @@ $chaine += $traitement
 $chaine>> $nomfichier
 
 
-<<<<<<< HEAD
-
-=======
 #Remote Registry (RemoteRegistry)'
 $indextest += 1
 $chaine = $null
@@ -2925,7 +2922,6 @@ if ( $exist -eq $true) {
 else {
  $traitement = "It s not installed"
 }
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 $chaine += $traitement
 $chaine>> $nomfichier
@@ -5115,9 +5111,6 @@ else {
 $chaine += $traitement
 $chaine>> $nomfichier
 
-<<<<<<< HEAD
-
-=======
 #Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'
 $indextest += 1
 $chaine = $null
@@ -5133,7 +5126,6 @@ if ( $exist -eq $true) {
 else {
  $traitement = "not configure"
 }
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 $chaine += $traitement
 $chaine>> $nomfichier
@@ -7797,9 +7789,6 @@ $chaine += $traitement
 $chaine>> $nomfichier
 
 
-<<<<<<< HEAD
-
-=======
 #Configure Password Manager'
 $indextest += 1
 $chaine = $null
@@ -7816,7 +7805,6 @@ else {
 }
 $chaine += $traitement
 $chaine>> $nomfichier
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 
 
@@ -8797,9 +8785,6 @@ $chaine += $traitementtemp
 $chaine>> $nomfichier
 
 
-<<<<<<< HEAD
-
-=======
 #Configure SmartScreen Filter'
 $indextest += 1
 $chaine = $null
@@ -8816,7 +8801,6 @@ else {
 }
 $chaine += $traitement
 $chaine>> $nomfichier
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 
 #Prevent bypassing SmartScreen prompts for files'

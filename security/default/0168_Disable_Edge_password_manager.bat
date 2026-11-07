@@ -4,7 +4,6 @@
 :: @@@Microsoft Edge@@@ @@@FormSuggest Passwords@@@
 reg add "HKCU\Software\Policies\Microsoft\MicrosoftEdge\Main" /v "FormSuggest Passwords" /t REG_SZ /d no /f
 
-<<<<<<< HEAD
       @REM # 18.9.45.6 (L1) Ensure 'Configure Password Manager' is set to 'Disabled'
       @REM Registry 'FormSuggestPasswords' {
       @REM     Ensure     = 'Present'
@@ -38,6 +37,3 @@ reg add "HKCU\Software\Policies\Microsoft\MicrosoftEdge\Main" /v "FormSuggest Pa
 @REM ; yes = On
 @REM ; NON-COMPLIANCE TO NOT DISRUPT COMMON HOME FEATURES
 @REM ;"FormSuggest Passwords"="no"
-=======
-
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01

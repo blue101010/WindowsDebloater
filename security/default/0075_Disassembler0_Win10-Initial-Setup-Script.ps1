@@ -112,11 +112,6 @@ Function EnableWiFiSense {
 	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config" -Name "WiFISenseAllowed" -ErrorAction SilentlyContinue
 }
 
-<<<<<<< HEAD
-
-
-
-=======
 # Disable SmartScreen Filter
 Function DisableSmartScreen {
 	Write-Output "Disabling SmartScreen Filter..."
@@ -133,7 +128,6 @@ Function EnableSmartScreen {
 	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableSmartScreen" -ErrorAction SilentlyContinue
 	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter" -Name "EnabledV9" -ErrorAction SilentlyContinue
 }
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 # Disable Web Search in Start Menu
 Function DisableWebSearch {

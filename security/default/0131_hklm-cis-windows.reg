@@ -619,16 +619,12 @@ Windows Registry Editor Version 5.00
 ; NON-COMPLIANCE TO NOT DISRUPT COMMON HOME FEATURES
 ;"Start"=dword:0000004
 
-<<<<<<< HEAD
-
-=======
 ;;; 5.25 (L2) Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'
 ;[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry]
 ; 2 = Automatic
 ; 3 = Manual
 ; 4 = Disabled (Default / CIS)
 ;"Start"=dword:0000004
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 ;;; 5.26 (L1) Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'
 ;[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess]
@@ -1748,9 +1744,6 @@ Windows Registry Editor Version 5.00
 ; NON-COMPLIANCE TO NOT DISRUPT COMMON HOME FEATURES
 ;"Cookies"=dword:0000001
 
-<<<<<<< HEAD
-
-=======
 ;;; 18.9.45.5 (L1) Ensure 'Configure Password Manager' is set to 'Disabled'
 ;[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main]
 ; <deleted> = (Default)
@@ -1758,7 +1751,6 @@ Windows Registry Editor Version 5.00
 ; yes = On
 ; NON-COMPLIANCE TO NOT DISRUPT COMMON HOME FEATURES
 ;"FormSuggest Passwords"="no"
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 ;;; 18.9.45.6 (L2) Ensure 'Configure Pop-up Blocker' is set to 'Enabled'
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main]
@@ -2023,16 +2015,12 @@ Windows Registry Editor Version 5.00
 ; NON-COMPLIANCE TO NOT DISRUPT COMMON HOME FEATURES
 ;"ShellSmartScreenLevel"="Block"
 
-<<<<<<< HEAD
-
-=======
 ;;; 18.9.80.2.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter]
 ; <deleted> = (Default)
 ; 0000000 = Off
 ; 0000001 = On (Default / CIS)
 "EnabledV9"=dword:0000001
->>>>>>> feae34e98302c12b3753da7b45b8072fcab3dc01
 
 ;;; 18.9.80.2.2 (L1) Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for files' is set to 'Enabled'
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter]
