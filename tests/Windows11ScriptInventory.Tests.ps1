@@ -75,9 +75,16 @@ $controls = @($report | Where-Object { $_ -match '^\d+\.\s' })
 Assert-Test ($controls.Count -eq 50) "Expected exactly 50 prioritized technical controls."
 for ($i = 0; $i -lt $controls.Count; $i++) {
     Assert-Test ($controls[$i].StartsWith(($i + 1).ToString() + ". ")) "Report priority numbering is not sequential."
-    Assert-Test ($controls[$i].Contains('`') -and $controls[$i] -match 'https://learn\.microsoft\.com/') "Control lacks technical identifier or Microsoft source."
+    Assert-Test ($controls[$i].Contains('`') -and $controls[$i] -match 'https://(learn\.microsoft\.com|github\.com/Raphire/Win11Debloat)/') "Control lacks technical identifier or source."
 }
+
+$identities = @($controls | ForEach-Object {
+    Assert-Test ($_ -match '`([^`]+)`') "Control lacks an identity."
+    $Matches[1]
+})
+Assert-Test (@($identities | Select-Object -Unique).Count -eq 50) "Report repeats a technical control identity."
+Assert-Test (($controls -join "`n") -notmatch 'TurnOffWindowsCopilot|PreventDeviceEncryption|TurnOffSavingSnapshots') "Report includes obsolete or security-reducing upstream suggestions."
 
 Write-Host "[PASS] All 39 archived scripts are in deprecated; mixed and still-applicable scripts remain."
 Write-Host "[PASS] Windows 11 profile no longer calls the archived controls."
-Write-Host "[PASS] Report contains 50 sequential, sourced technical controls."
+Write-Host "[PASS] Report contains 50 distinct, sequential, sourced technical controls."

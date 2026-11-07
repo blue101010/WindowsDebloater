@@ -111,7 +111,12 @@ The Windows 11 profile no longer calls the archived standalone controls; their
 isolated tests now address the archive.
 
 [`security/default/471.md`](security/default/471.md) lists the prioritized missing
-Windows 11 controls with technical identities, values and Microsoft sources.
+Windows 11 controls with technical identities, values and sources. The 50-entry
+backlog includes a comparison with
+[Raphire/Win11Debloat](https://github.com/Raphire/Win11Debloat/blob/5d88bfe9ef2be5a8a643166a6400eb78a30c46ec/Win11Debloat.ps1),
+including its feature definitions, registry specifications and apply functions,
+not just its command-line switches. Scope is applicability to Windows 11
+24H2-26H2, not exclusively controls first introduced in Windows 11.
 This is a review backlog, not a script or a universally safe baseline.
 Check edition, hardware, servicing level and documented policy applicability
 before implementing any entry.
