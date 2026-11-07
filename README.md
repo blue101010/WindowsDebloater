@@ -18,7 +18,7 @@ This tool is mainly focused on a **powershell** approach and add others scripts 
 
 ### Remaining controls in all.bat
 
-[`security/default/all.bat`](security/default/all.bat) retains 115 active
+[`security/default/all.bat`](security/default/all.bat) retains 81 active
 registry writes and nine commented optional writes after removing equivalents
 found in other repository scripts, registry-import files, PowerShell functions,
 and DSC configurations (including deprecated files). Equivalence requires the
@@ -26,10 +26,43 @@ same hive, key, value name, registry type, and data; comments and read-only
 checks are not replacements. Entries with different data or registry locations
 remain unchanged.
 
+The Windows 11 cleanup additionally removes 34 registry writes and six
+firewall commands targeting obsolete or retired features:
+
+| Removed controls | Reason |
+| --- | --- |
+| Active Desktop and desktop Sidebar gadgets | Active Desktop policies target pre-Vista Windows; gadgets were removed in Windows 8. |
+| `HidePeopleBar` | My People is not present on the Windows 11 taskbar. |
+| NetMeeting `NoRDS` | Controls NetMeeting desktop sharing, not modern Remote Desktop. |
+| `PCHealth\ErrorReporting` and `PCHealth\HelpSvc` | XP-era error reporting and Help and Support Center settings. Modern Windows Error Reporting controls remain. |
+| Two DeviceInstall-to-WER settings | Their ADMX supported-version ranges end at Windows 10 version 1709. |
+| `NoInternetOpenWith` and GameUX settings | Legacy Open With web lookup (ADMX range ends at Windows 7) and removed Games Explorer. |
+| UE-V Windows8AppList synchronization | The UE-V client is deprecated; extended support ended April 14, 2026. |
+| Offline Maps download settings | Maps is deprecated and no longer supported. |
+| `DisableAntiSpyware` | Microsoft removed this legacy Defender configuration setting. Other Defender settings remain. |
+| Cortana and OneNote UWP firewall groups/program rules | Cortana is deprecated; OneNote for Windows 10 reached end of support in October 2025. |
+
+Sources: [Windows 11 feature deprecations](https://www.microsoft.com/en-us/windows/windows-11-specifications),
+[deprecated Windows features](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features),
+[desktop gadgets removal](https://learn.microsoft.com/en-us/windows/compatibility/desktop-gadgets-removed),
+[diagnostic data settings](https://learn.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-data-in-your-organization),
+[DisableAntiSpyware](https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/security-malware-windows-defender-disableantispyware),
+and [OneNote UWP migration](https://learn.microsoft.com/en-us/microsoft-365-apps/deploy/onenote-for-windows-10-migration-guide).
+Legacy policy applicability was also checked against Windows 11 ADMX definitions.
+
 This batch file is no longer a complete hardening baseline and does not invoke
-the replacement scripts. Its firewall, scheduled-task, and other non-registry
-commands are unchanged. Review the remaining controls before running it as
-Administrator.
+replacement scripts. Removing commands does not undo settings applied by earlier
+runs. Firewall-rule deletions for retired apps remain to clean up earlier runs.
+Optional features such as Wireless Display and legacy Windows Media Player are
+not treated as removed merely because they are not installed. Scheduled-task
+commands are unchanged; availability can vary by build and installed software.
+Review the remaining controls before running it as Administrator.
+
+Run the static checks without modifying Windows settings:
+
+```powershell
+powershell -NoProfile -File .\tests\all.Windows11.Tests.ps1
+```
 
 ### Disabling activity history publishing
 
