@@ -28,8 +28,6 @@ Set-ExecutionPolicy Unrestricted
 ./security/default/0030.01_Disable_biometrics_WbioSrvc.ps1
 ./security/default/0031_Disable_Program_Compatibility_Assistant.ps1
 ./security/default/0036_Disable_cortana-registry.ps1
-./security/default/0036.01_Disable_cortana-registry_AllowCortana.ps1
-./security/default/0036.02_Disable_cortana-registry_DisableWebSearch.ps1
 ./security/default/0036.03_Disable_cortana-registry_AllowSearchToUseLocation.ps1
 ./security/default/0037_Disable_Windows_Consumer_Features_SystemPaneSuggestionsEnabled.ps1
 ./security/default/0040_Disable_anonymous_enumeration_restrictanonymous.ps1
@@ -54,7 +52,6 @@ Set-ExecutionPolicy Unrestricted
 ./security/default/0072.02_Disable_loggers_CurrentControlSet_AutoLogger-Diagtrack-Listener.ps1
 ./security/default/0072.03_Disable_loggers_SQMLogger.ps1
 ./security/default/0073_Disable_WMI_Autologger_CloudExperienceHostOobe.ps1
-./security/default/0077_Disable_Microsoft_Windows_Maps_sched_task.ps1
 ./security/default/0079_Disable_Windows_tips_DisableSoftLanding.ps1
 ./security/default/0080_List_BITS.ps1
 ./security/default/0085_Disable_Wi-Fi.ps1
@@ -115,4 +112,3 @@ Set-ExecutionPolicy Unrestricted
 ############################################
 #./security/default/0029_List_all_scheduled_tasks.ps1
 #./security/default/0367_monitor_ip_trafic.ps1
-

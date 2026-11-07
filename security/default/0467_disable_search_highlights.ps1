@@ -20,7 +20,7 @@ Sets two DWORD values to 0:
 - Restart Explorer or sign out/in if the search box picture remains.
 - Creates keys and values if missing, then reads each value back to confirm it.
 - To undo, delete EnableDynamicContentInWSB and set IsDynamicSearchBoxEnabled to 1.
-- Related: 0036.02_Disable_cortana_registry_DisableWebSearch.ps1
+- Legacy reference (not a Windows 11 replacement): ..\deprecated\0036.02_Disable_cortana_registry_DisableWebSearch.ps1
 #>
 
 $scriptName = "0467_disable_search_highlights"

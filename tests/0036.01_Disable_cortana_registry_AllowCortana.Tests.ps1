@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$scriptPath = Join-Path $PSScriptRoot "..\security\default\0036.01_Disable_cortana_registry_AllowCortana.ps1"
+$scriptPath = Join-Path $PSScriptRoot "..\security\deprecated\0036.01_Disable_cortana_registry_AllowCortana.ps1"
 $expectedPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search"
 
 function Assert-Test {

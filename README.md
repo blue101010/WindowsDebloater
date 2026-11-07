@@ -64,6 +64,62 @@ Run the static checks without modifying Windows settings:
 powershell -NoProfile -File .\tests\all.Windows11.Tests.ps1
 ```
 
+### Windows 11 script applicability audit (24H2-26H2)
+
+39 wholly legacy or retired scripts were moved, without changing their contents,
+from [`security/default`](security/default) to
+[`security/deprecated`](security/deprecated). This includes older-than-Windows-10
+controls as well as Windows 10-only controls and features removed in Windows 11.
+Archiving does not undo previously applied settings.
+
+| Archived script IDs | Count | Technical reason |
+| --- | --- | --- |
+| `0036.01`, `0411` | 2 | Only `AllowCortana` / `AllowCortanaAboveLock`; the standalone Cortana app is retired. |
+| `0036.02` | 1 | `DisableWebSearch` is the legacy Windows Desktop Search policy: Search.admx resolves `RedistOnly` to XP/Server 2003 with Windows Search 3.01+. It is not a supported Windows 11 web-search control. |
+| `0088_001` through `0088_017`, `0162`, `0163`, `0216` | 20 | Only legacy `DeviceAccess` writes, with no CapabilityAccessManager or AppPrivacy implementation. The 0088 scripts themselves identify the pre-1903 limitation; successful readback of this old key does not prove enforcement. `0088_017` also explicitly describes its writes as reference/TODO, not working permission removal. |
+| `0077` | 1 | Only MapsBroker and Maps scheduled tasks; Windows Maps is no longer supported. |
+| `0171` | 1 | Comment-only Holographic/FirstRunSucceeded reference; Mixed Reality Portal was removed in 24H2. |
+| `0225` | 1 | Enables `Windows-Defender-ApplicationGuard`, removed in 24H2. |
+| `0168`, `0294`, `0298` | 3 | Only legacy EdgeHTML `MicrosoftEdge`/AppContainer settings, not Chromium `Microsoft\Edge` policies. |
+| `0295`, `0296`, `0297` | 3 | EdgeUI policies for the Windows 8/8.1 corner-based app switcher/PC settings UI, not the Edge browser or Windows 11 Task View. |
+| `0312` through `0315` | 4 | Only EMET SysSettings; EMET support ended in 2018. Use modern Exploit Protection instead. |
+| `0179` | 1 | Hard-coded Windows 10 build 10240 CBS package identities; not Windows 11 package removal. |
+| `0180` | 1 | Only `UploadUserActivities`; Timeline cloud synchronization ended for Microsoft accounts in 2021 and Entra accounts in January 2024. |
+| `0327` | 1 | Only `wmic qfe`; Microsoft lists WMIC as removed from 24H2 and above. WMI/CIM itself is not removed. |
+
+Method: inspect executed commands rather than filenames, resolve local
+ADMX/ADML `supportedOn` identifiers (including upper limits), and cross-check
+[Policy CSP applicability](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-configuration-service-provider),
+[removed features](https://learn.microsoft.com/en-us/windows/whats-new/removed-features),
+[deprecated features](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features),
+[Edge Legacy retirement](https://support.microsoft.com/en-gb/edge/what-is-microsoft-edge-legacy),
+and [EMET lifecycle](https://learn.microsoft.com/en-us/lifecycle/products/enhanced-mitigation-experience-toolkit-emet).
+An ADMX entry's presence, a Windows 10 minimum version, or a feature missing on
+one computer is not sufficient proof of Windows 11 obsolescence. The DeviceAccess
+classification additionally relies on the existing scripts' documented legacy
+scope, rather than claiming a Microsoft ADMX removal notice for those raw keys.
+
+Mixed scripts stay in default, including the Cortana aggregate, the large CIS/DSC
+collections and Windows 10-named hardening libraries. Their retention does
+**not** certify every command inside them. `AllowCloudSearch` and
+`AllowSearchToUseLocation` remain because they also govern Windows Search.
+Modern AppPrivacy controls remain in
+[`0056_Disable_with_policy_apprivacy.ps1`](security/default/0056_Disable_with_policy_apprivacy.ps1).
+Steps Recorder, online speech, optional features, and controls with uncertain
+removal dates were not archived merely because of a deprecation announcement.
+The Windows 11 profile no longer calls the archived standalone controls; their
+isolated tests now address the archive.
+
+[`security/default/471.md`](security/default/471.md) lists the prioritized missing
+Windows 11 controls with technical identities, values and Microsoft sources.
+This is a review backlog, not a script or a universally safe baseline.
+Check edition, hardware, servicing level and documented policy applicability
+before implementing any entry.
+
+```powershell
+powershell -NoProfile -File .\tests\Windows11ScriptInventory.Tests.ps1
+```
+
 ### Disabling activity history publishing
 
 [`security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1`](security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1)

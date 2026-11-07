@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$scriptPath = Join-Path $PSScriptRoot "..\security\default\0179_remove-contact-support-and-windows-feedback-packages-from-windows-10.ps1"
+$scriptPath = Join-Path $PSScriptRoot "..\security\deprecated\0179_remove-contact-support-and-windows-feedback-packages-from-windows-10.ps1"
 $tokens = $null
 $parseErrors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
