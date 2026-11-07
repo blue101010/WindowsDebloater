@@ -13,8 +13,8 @@ $targetValue = 0
 $modified = $false
 
 if (-not (Test-Path $registryPath -ErrorAction Stop)) {
-  Write-Warning "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] Registry path not found: $registryPath. Status not confirmed."
-  return
+  New-Item -Path $registryPath -Force -ErrorAction Stop | Out-Null
+  Write-Host "[0025_Disable_Advertising_ID_for_Relevant_Ads_Enabled] Created registry path: $registryPath"
 }
 
 $properties = Get-ItemProperty -Path $registryPath -ErrorAction Stop

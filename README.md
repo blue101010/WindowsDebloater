@@ -33,6 +33,20 @@ Run isolated tests without changing the registry or displaying UAC prompts:
 powershell -NoProfile -File .\tests\0011_Disable_Collect_Activity_History_PublishUserActivities.Tests.ps1
 ```
 
+### Disabling application telemetry
+
+[`security/default/0017_Disable_Application_Telemetry.ps1`](security/default/0017_Disable_Application_Telemetry.ps1)
+creates the missing `AppCompat` policy key and sets `AITEnable` to DWORD `0`,
+including when the value was previously unconfigured. It requests UAC elevation
+when needed, verifies writes, and stops on registry or elevation errors.
+An existing `AITEnable` value of `0` is left unchanged.
+
+Run isolated tests without registry changes or UAC prompts:
+
+```powershell
+powershell -NoProfile -File .\tests\0017_Disable_Application_Telemetry.Tests.ps1
+```
+
 ### Global Git configuration
 
 [`security/default/0002_git_config_global.ps1`](security/default/0002_git_config_global.ps1)

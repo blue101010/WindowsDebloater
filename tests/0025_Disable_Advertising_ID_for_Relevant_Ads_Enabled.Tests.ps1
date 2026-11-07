@@ -16,6 +16,14 @@ function Invoke-AdvertisingStatusScript {
         return $State.KeyExists
     }
 
+    function New-Item {
+        param($Path, [switch]$Force, $ErrorAction)
+        Assert-Test ($Path -eq $expectedPath -and $Force -and $ErrorAction -eq "Stop") "Unexpected key creation."
+        $State.Creates++
+        if ($State.Failure -eq "Create") { throw "Registry key creation denied." }
+        $State.KeyExists = $true
+    }
+
     function Get-ItemProperty {
         param($Path, $ErrorAction)
         Assert-Test ($Path -eq $expectedPath -and $ErrorAction -eq "Stop") "Unexpected read."
@@ -57,7 +65,8 @@ foreach ($case in @(
     @{ Name = "Enabled"; KeyExists = $true; Properties = @{ Enabled = 1 }; Writes = 1; Verifications = 1; Status = "[changed]" },
     @{ Name = "Missing value"; KeyExists = $true; Properties = @{}; Writes = 1; Verifications = 1; Status = "[changed]" },
     @{ Name = "Already disabled"; KeyExists = $true; Properties = @{ Enabled = 0 }; Writes = 0; Verifications = 1; Status = "[no change]" },
-    @{ Name = "Missing key"; KeyExists = $false; Properties = @{}; Writes = 0; Verifications = 0 },
+    @{ Name = "Missing key"; KeyExists = $false; Properties = @{}; Creates = 1; Writes = 1; Verifications = 1; Status = "[changed]" },
+    @{ Name = "Create denied"; KeyExists = $false; Properties = @{}; Creates = 1; Writes = 0; Verifications = 0; Failure = "Create"; Error = "Registry key creation denied." },
     @{ Name = "Read denied"; KeyExists = $true; Properties = @{}; Writes = 0; Verifications = 0; Failure = "Read"; Error = "Registry read denied." },
     @{ Name = "Write denied"; KeyExists = $true; Properties = @{ Enabled = 1 }; Writes = 1; Verifications = 0; Failure = "Write"; Error = "Registry write denied." },
     @{ Name = "Verification read denied"; KeyExists = $true; Properties = @{ Enabled = 1 }; Writes = 1; Verifications = 1; Failure = "Verify"; Error = "Registry verification read denied." },
@@ -67,6 +76,7 @@ foreach ($case in @(
         KeyExists = $case.KeyExists
         Properties = $case.Properties
         Failure = $case.Failure
+        Creates = 0
         Writes = 0
         Verifications = 0
         Messages = New-Object 'System.Collections.Generic.List[string]'
@@ -81,16 +91,14 @@ foreach ($case in @(
     else {
         Assert-Test ($null -eq $failure) "$($case.Name): unexpected error '$failure'."
     }
-    Assert-Test ($state.Writes -eq $case.Writes -and $state.Verifications -eq $case.Verifications) "$($case.Name): unexpected operation counts."
+    $expectedCreates = if ($case.Creates) { $case.Creates } else { 0 }
+    Assert-Test ($state.Creates -eq $expectedCreates -and $state.Writes -eq $case.Writes -and $state.Verifications -eq $case.Verifications) "$($case.Name): unexpected operation counts."
     $output = $state.Messages -join "`n"
     if ($case.Status) {
         Assert-Test ($output.Contains("[confirmed]") -and $output.Contains($case.Status) -and $output.Contains("Enabled = 0 (disabled)")) "$($case.Name): missing confirmed status."
     }
     else {
-        Assert-Test ($state.Messages.Count -eq 0) "$($case.Name): incorrectly reported success."
-        if (-not $case.KeyExists) {
-            Assert-Test ($state.Warnings.Count -eq 1 -and $state.Warnings[0].Contains("Status not confirmed")) "Missing key did not warn."
-        }
+        Assert-Test (-not ($state.Messages -join "`n").Contains("[confirmed]")) "$($case.Name): incorrectly reported success."
     }
     Write-Host "[PASS] $($case.Name)."
 }

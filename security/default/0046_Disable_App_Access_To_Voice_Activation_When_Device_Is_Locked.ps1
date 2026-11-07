@@ -3,7 +3,7 @@
 Disables app access to voice activation when the device is locked.
 
 .DESCRIPTION
-This script disables the ability for apps to access voice activation when the device is locked. It checks the value of a specific registry key and updates it if necessary.
+This script disables the ability for apps to access voice activation when the device is locked. It creates the registry key if missing, updates the value if necessary, and reads it back to confirm.
 
 .PARAMETER registryPath
 The path to the registry key that controls app access to voice activation when the device is locked.
@@ -25,25 +25,24 @@ $registryPath = "HKCU:\Software\Microsoft\Speech_OneCore\Settings\VoiceActivatio
 $registryValueName = "AgentActivationOnLockScreenEnabled"
 $targetValue = 0
 
-# Check if the registry key exists
-if (Test-Path $registryPath) {
-  # Get the current value of the registry key
-  $currentValue = Get-ItemPropertyValue -Path $registryPath -Name $registryValueName
+$scriptName = "0046_Disable_App_Access_To_Voice_Activation_When_Device_Is_Locked"
 
-  # Check if the current value is different from the target value
-  if ($currentValue -ne $targetValue) {
-    # Set the target value for the registry key
-    Set-ItemProperty -Path $registryPath -Name $registryValueName -Value $targetValue
+if (-not (Test-Path $registryPath -ErrorAction Stop)) {
+  New-Item -Path $registryPath -Force -ErrorAction Stop | Out-Null
+  Write-Host "[$scriptName] Created registry path: $registryPath"
+}
 
-    # Display a message indicating that the value has been updated
-    Write-Host "[0046_Disable_App_Access_To_Voice_Activation_When_Device_Is_Locked] The value of '$registryValueName' has been updated to '$targetValue'."
-  }
-  else {
-    # Display a message indicating that the value is already set to the target value
-    Write-Host "[0046_Disable_App_Access_To_Voice_Activation_When_Device_Is_Locked] The value of '$registryValueName' is already set to '$targetValue'."
-  }
+$property = (Get-ItemProperty -Path $registryPath -ErrorAction Stop).PSObject.Properties[$registryValueName]
+$modified = $false
+if ($null -eq $property -or $property.Value -ne $targetValue) {
+  Set-ItemProperty -Path $registryPath -Name $registryValueName -Value $targetValue -Type DWORD -Force -ErrorAction Stop
+  $modified = $true
 }
-else {
-  # Display a message indicating that the registry key does not exist
-  Write-Host "[0046_Disable_App_Access_To_Voice_Activation_When_Device_Is_Locked] The registry key '$registryPath' does not exist."
+
+$confirmedValue = Get-ItemPropertyValue -Path $registryPath -Name $registryValueName -ErrorAction Stop
+if ($confirmedValue -ne $targetValue) {
+  throw "[$scriptName] Verification failed: $registryPath $registryValueName = $confirmedValue; expected $targetValue."
 }
+
+$status = if ($modified) { "[changed]" } else { "[no change]" }
+Write-Host "[$scriptName] [confirmed] $status $registryPath $registryValueName = $confirmedValue (disabled)"
