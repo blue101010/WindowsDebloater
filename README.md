@@ -63,6 +63,20 @@ Git configuration:
 powershell -NoProfile -File .\tests\0002_git_config_global.Tests.ps1
 ```
 
+### Default input method
+
+[`security/default/0470_Set_default_input_method_English_US_International.ps1`](security/default/0470_Set_default_input_method_English_US_International.ps1)
+adds the United States-International keyboard layout to the current user's
+English (United States) language entry and sets it as the default input method.
+Other languages and keyboard layouts are preserved; administrator rights are
+not required.
+
+Run isolated tests without changing the Windows language list:
+
+```powershell
+powershell -NoProfile -File .\tests\0470_Set_default_input_method_English_US_International.Tests.ps1
+```
+
 ### Blocking mshta with AppLocker
 
 [`security/default/0222_block_mshta.ps1`](security/default/0222_block_mshta.ps1)
