@@ -16,6 +16,21 @@ A current profile (TBC) would be the update of the day sequence of each required
 
 This tool is mainly focused on a **powershell** approach and add others scripts ( batch, powershell, python, ansible ) for reference. Scripts are in <https://github.com/blue101010/Windows10Debloater/tree/master/security/default> directory.
 
+### Remaining controls in all.bat
+
+[`security/default/all.bat`](security/default/all.bat) retains 115 active
+registry writes and nine commented optional writes after removing equivalents
+found in other repository scripts, registry-import files, PowerShell functions,
+and DSC configurations (including deprecated files). Equivalence requires the
+same hive, key, value name, registry type, and data; comments and read-only
+checks are not replacements. Entries with different data or registry locations
+remain unchanged.
+
+This batch file is no longer a complete hardening baseline and does not invoke
+the replacement scripts. Its firewall, scheduled-task, and other non-registry
+commands are unchanged. Review the remaining controls before running it as
+Administrator.
+
 ### Disabling activity history publishing
 
 [`security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1`](security/default/0011_Disable_Collect_Activity_History_PublishUserActivities.ps1)
@@ -66,10 +81,15 @@ powershell -NoProfile -File .\tests\0002_git_config_global.Tests.ps1
 ### Default input method
 
 [`security/default/0470_Set_default_input_method_English_US_International.ps1`](security/default/0470_Set_default_input_method_English_US_International.ps1)
-adds the United States-International keyboard layout to the current user's
-English (United States) language entry and sets it as the default input method.
-Other languages and keyboard layouts are preserved; administrator rights are
-not required.
+keeps only English (United States) with United States-International
+(`0409:00020409`) and sets it as the current user's default input method.
+**Canadian Multilingual Standard (CMS), all other keyboard layouts, and other
+preferred language entries are removed from this user's list.** This also changes
+language preferences used by apps and websites. Administrator rights are not
+required; run as the intended user and sign out/back in to refresh cached layouts.
+Other users, system keyboard files, and the sign-in screen are not changed.
+This is a one-time configuration, not a policy blocking later additions or
+changes by synchronization, applications, or organization settings.
 
 Run isolated tests without changing the Windows language list:
 
