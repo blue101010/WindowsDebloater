@@ -16,21 +16,7 @@ A current profile (TBC) would be the update of the day sequence of each required
 
 This tool is mainly focused on a **powershell** approach and add others scripts ( batch, powershell, python, ansible ) for reference. Scripts are in <https://github.com/blue101010/Windows10Debloater/tree/master/security/default> directory.
 
-### Global Git configuration
 
-[`security/default/0002_git_config_global.ps1`](security/default/0002_git_config_global.ps1)
-sets the current user's global Git author name and email to the values defined in
-the script. Git must be on PATH; administrator privileges are not required.
-Each setting is read back and checked, with `[SUCCESS]` or `[FAIL]` status output.
-The script exits with code 0 on success or 1 on failure. Changes that succeeded
-are not rolled back if another setting fails.
-
-Run the isolated tests (requires Git on PATH) without modifying your real global
-Git configuration:
-
-```powershell
-powershell -NoProfile -File .\tests\0002_git_config_global.Tests.ps1
-```
 
 ## Credits
 
