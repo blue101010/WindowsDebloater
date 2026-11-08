@@ -16,6 +16,48 @@ A current profile (TBC) would be the update of the day sequence of each required
 
 This tool is mainly focused on a **powershell** approach and add others scripts ( batch, powershell, python, ansible ) for reference. Scripts are in <https://github.com/blue101010/Windows10Debloater/tree/master/security/default> directory.
 
+### Google Chrome update policies
+
+The Windows 11 `0108` PowerShell scripts set individual Google Update policies.
+Run the desired scripts as Administrator:
+
+- [`0108.001`](security/default/0108.001_Enable_Google_updates_default.ps1)
+  allows automatic and manual updates by default for Google applications.
+- [`0108.002`](security/default/0108.002_Set_Google_update_check_period.ps1)
+  sets the minimum interval between automatic checks to 20 minutes for Google applications.
+- [`0108.003`](security/default/0108.003_Enable_Chrome_updates.ps1)
+  allows automatic and manual Chrome updates, overriding the default for Chrome.
+- [`0108.004`](security/default/0108.004_Enable_Google_automatic_update_checks.ps1)
+  preserves a legacy update-check setting; its effect on current Google Updater
+  versions has not been established.
+
+These scripts write the 64-bit machine policy key; they do not enable updater
+services or scheduled tasks, install Chrome, or remove other conflicting policies.
+Google documents that computer Group Policy settings require domain-joined or
+MDM-managed devices. Check `chrome://policy` and the updater status to confirm
+the effective configuration. See [Google's update management documentation](https://support.google.com/chrome/a/answer/6350036).
+
+The `0109` Chrome script disables a security feature and should only be used
+when necessary. The `0113` online speech script targets the current user.
+Scripts `0123` through `0125` disable their listed scheduled tasks and report
+tasks that are absent. [`0126`](security/default/0126_Disable_Microsoft_Windows_SettingSync.ps1)
+disables registered SettingSync tasks instead of deleting task files, unlike the
+old batch file. Disabling Family Safety or SettingSync tasks can affect those
+features. Run machine-wide registry and scheduled-task scripts as Administrator.
+
+### CIS registry import review
+
+The review of [`0131_hklm-cis-windows.reg`](security/default/0131_hklm-cis-windows.reg)
+is **incomplete**. Edge Legacy controls and single-value blocks matching the
+same DWORD key, name, and data in the
+[`0205` DSC configuration](security/default/0205_Configure_CIS_Windows10_V181_DSC_hardening.ps1)
+have been removed, as have five settings implemented by
+[`0342`](security/default/0342_windows-11-hardening-script.bat).
+The DSC configuration is a definition, not an automatically applied replacement.
+Other duplicate and obsolete controls may remain; the remaining entries are not
+certified for Windows 11. Removing entries does not undo prior imports. Review
+the file and its security impact before importing it.
+
 ### Remaining controls in all.bat
 
 [`security/default/all.bat`](security/default/all.bat) retains 81 active
