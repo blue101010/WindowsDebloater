@@ -74,3 +74,153 @@ foreach ($setting in $settings) {
   $status = if ($modified) { "[changed]" } else { "[no change]" }
   Write-Host "[$scriptName] [confirmed] $status $path $name = $confirmedValue ($($setting.Type))"
 }
+
+
+###  Disable both lock-screen Widgets and the taskbar Widgets experience
+
+& {
+    $path = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
+    $targetName = 'AllowNewsAndInterests'
+
+    function Get-PolicyState {
+        param(
+            [string]$Path,
+            [string]$Name
+        )
+
+        $key = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+
+        if ($null -eq $key) {
+            return [pscustomobject]@{
+                Name   = $Name
+                Exists = $false
+                Value  = $null
+                Type   = '(missing)'
+            }
+        }
+
+        try {
+            if ($key.GetValueNames() -notcontains $Name) {
+                return [pscustomobject]@{
+                    Name   = $Name
+                    Exists = $false
+                    Value  = $null
+                    Type   = '(missing)'
+                }
+            }
+
+            [pscustomobject]@{
+                Name   = $Name
+                Exists = $true
+                Value  = $key.GetValue($Name)
+                Type   = $key.GetValueKind($Name).ToString()
+            }
+        }
+        finally {
+            $key.Close()
+        }
+    }
+
+    function Show-PolicyState {
+        param([string]$Path)
+
+        $rows = foreach ($name in @(
+            'AllowNewsAndInterests'
+            'DisableWidgetsOnLockScreen'
+        )) {
+            $state = Get-PolicyState -Path $Path -Name $name
+
+            [pscustomobject]@{
+                Policy = $state.Name
+                Value  = if ($state.Exists) {
+                    $state.Value
+                } else {
+                    '(not configured)'
+                }
+                Type = $state.Type
+            }
+        }
+
+        $rows | Format-Table -AutoSize | Out-Host
+    }
+
+    try {
+        Write-Host "`nCurrent configuration:" -ForegroundColor Cyan
+        Write-Host $path
+        Show-PolicyState -Path $path
+
+        $current = Get-PolicyState -Path $path -Name $targetName
+
+        $needsFix = (
+            -not $current.Exists -or
+            $current.Type -ne 'DWord' -or
+            $current.Value -ne 0
+        )
+
+        if (-not $needsFix) {
+            Write-Host 'No change needed: AllowNewsAndInterests is already DWORD 0.' `
+                -ForegroundColor Green
+            Write-Host 'This confirms the stored policy value, not its runtime enforcement.'
+            return
+        }
+
+        Write-Host 'A change is needed to configure the Widgets-blocking policy.' `
+            -ForegroundColor Yellow
+        Write-Host 'Proposed change: AllowNewsAndInterests = 0 (DWORD).'
+        Write-Host 'Scope: the entire Widgets experience, not only lock-screen tiles.'
+        Write-Host 'DisableWidgetsOnLockScreen will remain unchanged.'
+
+        $answer = Read-Host 'Apply this change? Type YES to confirm'
+
+        if ($answer.Trim() -ine 'YES') {
+            Write-Host "`nCancelled. No changes made." -ForegroundColor Yellow
+            Show-PolicyState -Path $path
+            return
+        }
+
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+        $isAdmin = $principal.IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator
+        )
+
+        if (-not $isAdmin) {
+            Write-Host "`nAdministrator privileges are required. No changes made." `
+                -ForegroundColor Red
+            Write-Host 'Open PowerShell as Administrator and run this script again.'
+            return
+        }
+
+        New-Item -Path $path -Force -ErrorAction Stop | Out-Null
+
+        New-ItemProperty `
+            -LiteralPath $path `
+            -Name $targetName `
+            -PropertyType DWord `
+            -Value 0 `
+            -Force `
+            -ErrorAction Stop | Out-Null
+
+        Write-Host "`nConfiguration after the change:" -ForegroundColor Cyan
+        Show-PolicyState -Path $path
+
+        $verified = Get-PolicyState -Path $path -Name $targetName
+
+        if (
+            $verified.Exists -and
+            $verified.Type -eq 'DWord' -and
+            $verified.Value -eq 0
+        ) {
+            Write-Host 'SUCCESS: AllowNewsAndInterests is DWORD 0.' `
+                -ForegroundColor Green
+            Write-Host 'Save your work, restart Windows, then check the lock screen.'
+            Write-Host 'No automatic restart will be performed.'
+        }
+        else {
+            throw 'Verification failed: the stored value or type does not match.'
+        }
+    }
+    catch {
+        Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}

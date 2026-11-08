@@ -58,6 +58,50 @@ Other duplicate and obsolete controls may remain; the remaining entries are not
 certified for Windows 11. Removing entries does not undo prior imports. Review
 the file and its security impact before importing it.
 
+### Replacement of the 0181 Wynis audit script
+
+[`0181_WynisWIN10-CISv1.0.ps1`](security/deprecated/0181_WynisWIN10-CISv1.0.ps1)
+was a read-only CIS audit (about 490 checks plus inventory dumps) and has been
+moved to `security/deprecated`. Every check was classified; a new script was
+created only when the control is valid on Windows 11 **and** no other script in
+`security/` writes it:
+
+| Classification | Checks | Where |
+| --- | --- | --- |
+| Already written by another script (same key and value name, or equivalent cmdlet/DSC resource) | 447 | mainly `0205` (registry, `SecurityOption`, `UserRightsAssignment`, `AccountPolicy`, `AuditPolicySubcategory`, firewall policy), `0131`, `0133`/`0134`, `0342`, `0010.01`, `0129`, `0166`, `0193`, `0255`, `0263`, `0307` |
+| Obsolete on Windows 11 | 10 | `BthHFSrv` service (absent), HomeGroup services, legacy LAPS (`AdmPwd` CSE and policies; deprecated since 23H2, use Windows LAPS), Edge Legacy password manager, Internet Explorer RSS enclosures, Cortana above lock |
+| Inventory only (registry/firewall/software/service dumps) | — | not hardening controls; no replacement |
+| Valid on Windows 11 and not written elsewhere | 35 | new scripts `0481`–`0491` below |
+
+| Script | Controls |
+| --- | --- |
+| [`0481`](security/default/0481_Enable_Defender_email_scanning.ps1) | Defender email scanning |
+| [`0482`](security/default/0482_Restrict_remotely_accessible_registry_paths.ps1) | Remotely accessible registry paths (and sub-paths) |
+| [`0483`](security/default/0483_Enforce_firewall_local_rule_merge_domain_private.ps1) | Apply local firewall / connection security rules (Domain, Private) |
+| [`0484`](security/default/0484_Harden_network_connections_policies.ps1) | Network Bridge on domain network, elevation to set network location |
+| [`0485`](security/default/0485_Enforce_registry_policy_processing.ps1) | Registry policy processing (background and unchanged GPOs) |
+| [`0486`](security/default/0486_Block_user_input_methods_for_signin.ps1) | Do not copy user input methods to the sign-in screen (L2) |
+| [`0487`](security/default/0487_Disable_new_DMA_devices_when_locked.ps1) | Block new DMA devices when locked; skipped when Kernel DMA Protection is enabled or unknown |
+| [`0488`](security/default/0488_Configure_BitLocker_OS_drive_recovery.ps1) | BitLocker OS drive recovery options |
+| [`0489`](security/default/0489_Require_BitLocker_startup_PIN.ps1) | **High impact:** BitLocker TPM + startup PIN required |
+| [`0490`](security/default/0490_Configure_BitLocker_removable_drives.ps1) | **High impact:** removable drives read-only unless BitLocker-encrypted with a smart card |
+| [`0491`](security/default/0491_Enable_audit_account_management_subcategories.ps1) | Audit Computer Account Management and Other Account Management Events |
+
+All new scripts are Windows 11-only (client, build 22000+), require Administrator,
+and read back each value. Values follow the CIS benchmark and local ADMX files
+where 0181's descriptions were wrong (for example `NC_AllowNetBridge_NLA = 0`,
+`NoBackgroundPolicy = 0`, `OSRecoveryPassword = 2`). Several `0205` registry
+resources use keys without spaces (`NetworkConnections`, `GroupPolicy`,
+`ControlPanel`, `InternetExplorer`, `WindowsDefender`, `MicrosoftServices`) and
+therefore do not configure the intended policy; `0484`–`0486` cover the affected
+0181 controls. Pick the scripts that match the desired hardening profile; they
+are not run automatically. Tests:
+
+```powershell
+powershell -NoProfile -File .\security\tests\0482_0491_0181_extraction.Tests.ps1
+powershell -NoProfile -File .\security\tests\0481_Enable_Defender_email_scanning.Tests.ps1
+```
+
 ### Remaining controls in all.bat
 
 [`security/default/all.bat`](security/default/all.bat) retains 81 active

@@ -39,7 +39,8 @@ $archivedNames = @(
     "0314_Enable_EMET_BannedFunctions.bat",
     "0315_Enable_EMET_ExploitAction.bat",
     "0327_Get_patches_updates.bat",
-    "0411_Disable_allow_cortana_aboveLock.ps1"
+    "0411_Disable_allow_cortana_aboveLock.ps1",
+    "0181_WynisWIN10-CISv1.0.ps1"
 )
 
 function Assert-Test {
@@ -59,7 +60,6 @@ foreach ($name in @(
     "0075_Disassembler0_Win10-Initial-Setup-Script.ps1",
     "0148_Disable_Cortana_AllowCloudSearch.bat",
     "0167_Enable_Notififications_Internet_explorer_SafeForScripting.bat",
-    "0181_WynisWIN10-CISv1.0.ps1",
     "0205_Configure_CIS_Windows10_V181_DSC_hardening.ps1",
     "0342_windows-11-hardening-script.bat",
     "harden_windows10.bat"
@@ -85,6 +85,6 @@ $identities = @($controls | ForEach-Object {
 Assert-Test (@($identities | Select-Object -Unique).Count -eq 50) "Report repeats a technical control identity."
 Assert-Test (($controls -join "`n") -notmatch 'TurnOffWindowsCopilot|PreventDeviceEncryption|TurnOffSavingSnapshots') "Report includes obsolete or security-reducing upstream suggestions."
 
-Write-Host "[PASS] All 39 archived scripts are in deprecated; mixed and still-applicable scripts remain."
+Write-Host "[PASS] All 40 archived scripts are in deprecated; mixed and still-applicable scripts remain."
 Write-Host "[PASS] Windows 11 profile no longer calls the archived controls."
 Write-Host "[PASS] Report contains 50 distinct, sequential, sourced technical controls."
