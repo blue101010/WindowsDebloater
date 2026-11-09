@@ -205,29 +205,13 @@ Function EnableBackgroundApps {
 	}
 }
 
-# Disable sensor features, such as screen auto rotation
-Function DisableSensors {
-	Write-Output "Disabling sensors..."
-	If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors")) {
-		New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Force | Out-Null
-	}
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Name "DisableSensors" -Type DWord -Value 1
-}
+# DisableSensors and DisableLocation are covered by
+# 0086_Disable_location_access_and_sensors.ps1, which also disables the Windows Location Provider.
 
 # Enable sensor features
 Function EnableSensors {
 	Write-Output "Enabling sensors..."
 	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Name "DisableSensors" -ErrorAction SilentlyContinue
-}
-
-# Disable location feature and scripting for the location feature
-Function DisableLocation {
-	Write-Output "Disabling location services..."
-	If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors")) {
-		New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Force | Out-Null
-	}
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Name "DisableLocation" -Type DWord -Value 1
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors" -Name "DisableLocationScripting" -Type DWord -Value 1
 }
 
 # Enable location feature and scripting for the location feature
@@ -1868,11 +1852,7 @@ Function SetSoundSchemeDefault {
 	Set-ItemProperty -Path "HKCU:\AppEvents\Schemes" -Name "(Default)" -Type String -Value $SoundScheme
 }
 
-# Disable playing Windows Startup sound
-Function DisableStartupSound {
-	Write-Output "Disabling Windows Startup sound..."
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\BootAnimation" -Name "DisableStartupSound" -Type DWord -Value 1
-}
+# DisableStartupSound is covered by 0493_disable_windows_disableStatupSound.ps1.
 
 # Enable playing Windows Startup sound
 Function EnableStartupSound {
